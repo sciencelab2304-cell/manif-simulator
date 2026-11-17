@@ -104,7 +104,7 @@ export class Pickups {
 
   take(it: Item) {
     this.setActive(it, false);
-    it.respawn = 60;
+    it.respawn = 30;
     return it.kind;
   }
 

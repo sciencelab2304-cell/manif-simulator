@@ -84,9 +84,9 @@ export class NPC {
     this.pos.copy(pos);
     this.target.copy(pos);
     this.camp = role === 'crs' ? 'police' : role === 'firefighter' || role === 'journalist' ? 'neutral' : 'protest';
-    this.maxHp = this.hp = role === 'crs' ? 170 : role === 'firefighter' ? 120 : rr(85, 110);
+    this.maxHp = this.hp = role === 'crs' ? 100 : role === 'firefighter' ? 120 : rr(85, 110);
     this.look = withSeed(this.id * 7919 + 13, () => this.makeLook());
-    if (role === 'crs') this.armor = { head: 0.8, torso: 0.65, armL: 0.5, armR: 0.5, legL: 0.45, legR: 0.45 };
+    if (role === 'crs') this.armor = { head: 0.6, torso: 0.45, armL: 0.3, armR: 0.3, legL: 0.25, legR: 0.25 };
     if (role === 'firefighter') this.armor = { head: 0.7, torso: 0.3 };
     if (role === 'medic' || role === 'journalist') this.armor = { head: 0.5 };
     const w = ctx.physics.world;

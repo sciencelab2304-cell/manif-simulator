@@ -68,10 +68,8 @@ export class ViewModel {
     this.item = null;
     if (kind === 'lbd') this.item = this.lbd;
     else if (kind === 'baton') this.item = this.baton;
-    else if (kind === 'gas' || kind === 'sting') {
-      const d = defs()[kind as ThrowKind];
-      this.item = new THREE.Mesh(d.geo, d.mat as THREE.Material);
-    } else if (kind && kind in defs()) {
+    else if (kind === 'briquet') this.item = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.02), new THREE.MeshStandardMaterial({ color: 0xd8342a, roughness: 0.4 }));
+    else if (kind && kind in defs()) {
       const d = defs()[kind as ThrowKind];
       this.item = new THREE.Mesh(d.geo, d.mat as THREE.Material);
     }

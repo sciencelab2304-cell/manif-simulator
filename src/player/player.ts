@@ -59,8 +59,8 @@ export class Player {
 
   constructor(spawn: THREE.Vector3) {
     const police = ctx.camp === 'police';
-    this.maxHp = this.hp = police ? 170 : 120;
-    if (police) { this.armor = { head: 0.7, torso: 0.55, armL: 0.4, armR: 0.4, legL: 0.35, legR: 0.35 }; this.hasGasMask = true; }
+    this.maxHp = this.hp = 120;
+    if (police) { this.armor = { head: 0.55, torso: 0.4, armL: 0.25, armR: 0.25, legL: 0.2, legR: 0.2 }; this.hasGasMask = true; }
     this.pos.copy(spawn).setY(spawn.y + HALF_H + RADIUS + 0.05);
     const w = ctx.physics.world;
     this.body = w.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(this.pos.x, this.pos.y, this.pos.z));
@@ -129,7 +129,7 @@ export class Player {
     }
     if (this.hp <= 0) { this.goDown(); return; }
     // a protester clubbed while weak gets arrested
-    if (d.type === 'baton' && ctx.camp === 'protest' && (this.hp < this.maxHp * 0.35 || this.stun > 1.5) && chance(0.5)) this.getArrested();
+    if (d.type === 'baton' && ctx.camp === 'protest' && (this.hp < this.maxHp * 0.25 || this.stun > 2) && chance(0.3)) this.getArrested();
   }
 
   /** Hit zone from a world point. */
@@ -169,7 +169,7 @@ export class Player {
     if (d < o.radius) {
       const f = 1 - d / o.radius;
       const dir = new THREE.Vector3().subVectors(this.pos, pos).setY(0.3).normalize();
-      this.takeHit({ amount: o.damage * f * (ctx.camp === 'police' ? 0.6 : 1), zone: pick(['legL', 'legR', 'torso', 'armL', 'armR', 'head'] as Zone[]),
+      this.takeHit({ amount: o.damage * f, zone: pick(['legL', 'legR', 'torso', 'armL', 'armR', 'head'] as Zone[]),
         type: 'blast', dir, point: pos.clone(), force: o.knock * f, fromCamp: 'none' });
     }
   }

@@ -39,7 +39,7 @@ const CONTROLS: Record<Camp, [string, string][]> = {
   protest: [
     ['Z Q S D / W A S D', 'se déplacer'], ['Maj', 'courir'], ['Espace', 'sauter'], ['C', 's\'accroupir'],
     ['Clic gauche (maintenir)', 'lancer tendu'], ['Clic droit (maintenir)', 'lancer en cloche'], ['Molette / 1-8', 'choisir l\'objet'],
-    ['E', 'ramasser / dépaver / renvoyer une lacrymo'], ['F', 'barricade / mettre le feu'], ['X', 'bouclier de fortune'],
+    ['E', 'ramasser / dépaver / renvoyer une lacrymo'], ['F', 'barricade / mettre le feu (ou choisir le briquet et cliquer)'], ['X', 'bouclier de fortune'],
     ['M', 'masque'], ['K', 'sérum physiologique'], ['H', 'appeler un street medic'], ['I', 'slogan / insulte (+ tension)'], ['Échap', 'pause'],
   ],
   police: [
@@ -115,7 +115,7 @@ export class Game {
     const members = net.multi ? net.members : [{ id: net.me, name: 'Vous', camp }];
     const spawns = members.map((m) => spawnPoint(m.camp, members.filter((o) => o.camp === m.camp).indexOf(m)));
     this.spawn = spawns[members.findIndex((m) => m.id === net.me)];
-    this.arrestGoal = 6 + 4 * Math.max(1, members.filter((m) => m.camp === 'police').length);
+    this.arrestGoal = 8 + 5 * Math.max(1, members.filter((m) => m.camp === 'police').length);
     ctx.player = new Player(this.spawn);
     if (!net.isClient) {
       // the host (or solo game) owns the world; clients receive it from the host

@@ -173,7 +173,7 @@ export class Projectiles {
 
     // explosive projectiles
     if ((p.kind === 'fusee' && p.age > 0.08) || (p.kind === 'mortier' && p.age > 0.35 && speed > 5 && o?.kind !== 'static')) {
-      this.explode(pos, { radius: 4.5, damage: 30, knock: 5, fire: true, flash: 1, sound: 1, by: p.by, kind: p.kind });
+      this.explode(pos, { radius: 5, damage: 42, knock: 5, fire: true, flash: 1, sound: 1, by: p.by, kind: p.kind });
       this.kill(p);
       return;
     }
@@ -325,7 +325,7 @@ export class Projectiles {
     const pos = _v.set(t.x, t.y, t.z);
     if (p.fuse !== Infinity && p.age >= p.fuse) {
       if (p.kind === 'sting') this.explode(pos.clone(), { radius: 6, damage: 14, knock: 4.5, fire: false, flash: 1.2, sound: 1.2, by: p.by, kind: 'sting' });
-      else this.explode(pos.clone(), { radius: 4.5, damage: 26, knock: 4.5, fire: true, flash: 1, sound: 1, by: p.by, kind: p.kind as 'mortier' | 'fusee' });
+      else this.explode(pos.clone(), { radius: 5, damage: 38, knock: 4.5, fire: true, flash: 1, sound: 1, by: p.by, kind: p.kind as 'mortier' | 'fusee' });
       this.kill(p);
       return;
     }

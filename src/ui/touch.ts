@@ -3,24 +3,19 @@ import { ctx, type Camp } from '../core/context';
 
 /**
  * Touch overlay for phones/tablets. It only drives the shared Input state: a floating joystick on the left,
- * a look pad on the right, and buttons that press the same key codes / mouse buttons as the keyboard.
+ * a look pad on the right, and a few buttons that press the same key codes / mouse buttons as the keyboard.
+ * Weapons are chosen by tapping the bar at the bottom (the protester's lighter is in it, instead of a fire button).
  */
-type Act = { key?: string; btn?: number; toggle?: boolean; wheel?: boolean; look?: boolean; fn?: () => void };
+type Act = { key?: string; btn?: number; look?: boolean; fn?: () => void };
 type Btn = [label: string, act: Act];
 
 const RING: Record<Camp, Btn[]> = { // inner arc first (3 buttons), then the outer arc
-  protest: [
-    ['Cloche', { btn: 2, look: true }], ['Ramas.', { key: 'KeyE' }], ['Saut', { key: 'Space' }],
-    ['Feu / Barric.', { key: 'KeyF' }], ['Objet ⟳', { wheel: true }], ['Accr.', { key: 'KeyC', toggle: true }],
-  ],
-  police: [
-    ['Viser', { btn: 2, look: true }], ['Rech.', { key: 'KeyR' }], ['CHARGE', { key: 'KeyG' }],
-    ['Canon / E', { key: 'KeyE' }], ['Menotter', { key: 'KeyF' }], ['Arme ⟳', { wheel: true }], ['Accr.', { key: 'KeyC', toggle: true }], ['Saut', { key: 'Space' }],
-  ],
+  protest: [['Cloche', { btn: 2, look: true }], ['Ramas.', { key: 'KeyE' }]],
+  police: [['Viser', { btn: 2, look: true }], ['Rech.', { key: 'KeyR' }], ['Menotter', { key: 'KeyF' }], ['Canon', { key: 'KeyE' }], ['CHARGE', { key: 'KeyG' }]],
 };
 const PILLS: Record<Camp, Btn[]> = {
-  protest: [['Masque', { key: 'KeyM' }], ['Medic', { key: 'KeyH' }], ['Slogan', { key: 'KeyI' }], ['Sérum', { key: 'KeyK' }], ['Panneau', { key: 'KeyX' }], ['Vue', { key: 'KeyP' }]],
-  police: [['Avancer', { key: 'KeyT' }], ['Tenir', { key: 'KeyV' }], ['Masque', { key: 'KeyM' }], ['Soins', { key: 'KeyH' }], ['Vue', { key: 'KeyP' }]],
+  protest: [['Masque', { key: 'KeyM' }], ['Sérum', { key: 'KeyK' }], ['Panneau', { key: 'KeyX' }], ['Medic', { key: 'KeyH' }]],
+  police: [['Avancer', { key: 'KeyT' }], ['Tenir', { key: 'KeyV' }], ['Masque', { key: 'KeyM' }], ['Soins', { key: 'KeyH' }]],
 };
 const LOOK_GAIN = 2.2; // touch pixels feel smaller than mouse counts
 const STICK_R = 56;
@@ -41,9 +36,9 @@ export class TouchControls {
     const outer = RING[camp].length - 3;
     RING[camp].forEach(([l, a], i) => {
       const b = this.button(l, a);
-      // two arcs around the fire button, from its left to straight above it
+      // two arcs above the fire button, from its upper left to straight above it (the weapon bar runs below them)
       const k = i < 3 ? i / 2 : (i - 3) / Math.max(1, outer - 1);
-      const r = i < 3 ? 100 : 172, ang = Math.PI * (1 - 0.5 * k);
+      const r = i < 3 ? 120 : 180, ang = Math.PI * (i < 3 ? 0.88 - 0.38 * k : 0.7 - 0.2 * k);
       b.style.transform = `translate(${Math.cos(ang) * r}px, ${-Math.sin(ang) * r}px)`;
       ring.appendChild(b);
     });
@@ -52,7 +47,7 @@ export class TouchControls {
     this.root.append(this.base, ring, pills);
     document.getElementById('hud')!.appendChild(this.root);
     this.home();
-    const names = new Map([...RING[camp], ...PILLS[camp]].filter(([, a]) => a.key).map(([l, a]) => [a.key!.slice(3), l]));
+    const names = new Map([['Briquet', { key: 'KeyF' }] as Btn, ...RING[camp], ...PILLS[camp]].filter(([, a]) => a.key).map(([l, a]) => [a.key!.slice(3), l]));
     ctx.hud.hint = (t) => t.replace(/\[([A-Z])\]/g, (m, k) => names.has(k) ? `[${names.get(k)}]` : m);
 
     // empty screen: left side = joystick, right side = look
@@ -85,8 +80,6 @@ export class TouchControls {
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       if (a.fn) return a.fn();
-      if (a.wheel) { this.input.wheel += 1; return; }
-      if (a.toggle) return set(!this.input.down(a.key!));
       set(true);
       let lx = e.clientX, ly = e.clientY;
       this.drags.set(e.pointerId, (m, end) => {

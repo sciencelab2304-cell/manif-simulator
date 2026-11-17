@@ -634,7 +634,7 @@ export class Crowd {
       if (target) {
         n.aimT = 0.9;
         n.data.aim = target;
-        n.cooldown = ph === 2 ? rr(5, 10) : rr(10, 16);
+        n.cooldown = ph === 2 ? rr(7, 13) : rr(13, 20);
         setTimeout(() => this.crsShoot(n), 900);
       } else n.cooldown = 2;
     }

@@ -118,7 +118,7 @@ src/
 3. **Chaos** (jauge ≥ 65) : charges, nuages de lacrymo poussés par le vent, incendies, barricades, canon à eau, blessés au sol,
    street medics et pompiers qui évacuent.
 
-Objectifs : **manifestant** = atteindre la place ; **CRS** = interpeller 10 manifestants (6 + 4 par joueur CRS en multijoueur)
+Objectifs : **manifestant** = atteindre la place ; **CRS** = interpeller 13 manifestants (8 + 5 par joueur CRS en multijoueur)
 ou tenir la place 10 minutes (si 12 manifestants l'envahissent, c'est perdu). Le compteur est affiché en haut au centre.
 
 - **Menottage** : un manifestant ne peut être menotté qu'à 50 % de vie ou moins (ou à terre, ou gazé). F lance 2 s de menottage :

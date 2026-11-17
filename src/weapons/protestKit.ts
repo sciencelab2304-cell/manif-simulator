@@ -9,6 +9,9 @@ import { act } from '../net/actions';
 
 const ORDER: ThrowKind[] = ['pave', 'bouteille', 'conserve', 'canette', 'mortier', 'fusee', 'fumigene', 'gas'];
 const CALM_OK: ThrowKind[] = ['fumigene'];
+/** Always last in the bar: selected, the throw button sets fire / builds a barricade, like [F]. */
+const LIGHTER = 'briquet';
+type Slot = ThrowKind | typeof LIGHTER;
 
 const SLOGANS = ['« On lâche rien ! »', '« Valbrune debout ! »', '« Tous ensemble, tous ensemble ! »', '« Et un, et deux, et trois… »', '« Des sous pour les salaires ! »'];
 const INSULTS = ['« Rentrez chez vous ! »', '« Dégagez ! »', '« Bande de robots ! »', '« Lâches ! »', '« Honte à vous ! »'];
@@ -17,7 +20,7 @@ const _v = new THREE.Vector3();
 
 /** Protester gear: things to throw, makeshift shield, mask, saline, lighter. */
 export class ProtestKit {
-  inv: Record<string, number> = { pave: 3, bouteille: 1, canette: 1, conserve: 0, mortier: 2, fusee: 1, fumigene: 2, gas: 0 };
+  inv: Record<string, number> = { pave: 4, bouteille: 2, canette: 1, conserve: 0, mortier: 4, fusee: 4, fumigene: 2, gas: 0 };
   gasEmit = 0;
   sel = 0;
   charge = 0;
@@ -34,8 +37,8 @@ export class ProtestKit {
 
   constructor(private p: Player) {}
 
-  get list() { return ORDER.filter((k) => (this.inv[k] ?? 0) > 0); }
-  get current(): ThrowKind | null { const l = this.list; if (!l.length) return null; return l[this.sel % l.length]; }
+  get list(): Slot[] { return [...ORDER.filter((k) => (this.inv[k] ?? 0) > 0), LIGHTER]; }
+  get current(): Slot { const l = this.list; return l[this.sel % l.length]; }
 
   give(kind: string, n = 1) {
     if (kind === 'panneau') { this.panneau = true; this.panneauHp = 140; ctx.hud.feed('Panneau ramassé : [X] pour se protéger', '#f2e2b0'); return; }
@@ -55,9 +58,9 @@ export class ProtestKit {
     if (!p.alive) return;
     const l = this.list;
     if (inp.wheel) this.sel = (this.sel + inp.wheel + l.length * 10) % Math.max(1, l.length);
-    for (let i = 0; i < 8; i++) if (inp.hit('Digit' + (i + 1)) && i < l.length) this.sel = i;
+    for (let i = 0; i < 9; i++) if (inp.hit('Digit' + (i + 1)) && i < l.length) this.sel = i;
     const cur = this.current;
-    p.vm.setItem(this.panneauUp ? '' : cur ?? '');
+    p.vm.setItem(this.panneauUp ? '' : cur);
 
     // panel
     if (inp.hit('KeyX') && this.panneau) this.panneauUp = !this.panneauUp;
@@ -111,8 +114,9 @@ export class ProtestKit {
       else ctx.hud.setPrompt('');
     }
 
-    // barricade / fire
-    if (inp.hit('KeyF')) {
+    // barricade / fire: [F], or the throw button with the lighter selected
+    const lighter = cur === LIGHTER && !this.panneauUp;
+    if (inp.hit('KeyF') || lighter && inp.btnPressed[0]) {
       if (ctx.tension.phase === 0) this.say('Le cortège est pacifique pour l\'instant.');
       else {
         const front = p.feet.clone().add(_v.copy(fwd).setY(0).normalize().multiplyScalar(3));
@@ -121,7 +125,7 @@ export class ProtestKit {
     }
 
     // throwing
-    if (!cur || this.panneauUp) { this.charging = false; this.charge = 0; p.vm.charge = 0; return; }
+    if (cur === LIGHTER || this.panneauUp) { this.charging = false; this.charge = 0; p.vm.charge = 0; return; }
     const allowed = ctx.tension.weaponsFree || CALM_OK.includes(cur);
     if ((inp.btnPressed[0] || inp.btnPressed[2]) && p.stun < 0.5) {
       if (!allowed) this.say('Le cortège est calme… Personne ne lance rien. Pour l\'instant. [I] pour scander / provoquer');
@@ -160,7 +164,7 @@ export class ProtestKit {
 
   hudInfo() {
     return {
-      slots: this.list.map((k) => ({ name: KIND_FR[k], n: this.inv[k], active: k === this.current })),
+      slots: this.list.map((k) => ({ name: k === LIGHTER ? 'Briquet' : KIND_FR[k], n: k === LIGHTER ? -1 : this.inv[k], active: k === this.current })),
       extra: `Sérum ${this.serum} · Masque ${this.p.maskOn ? (this.p.hasGasMask ? 'gaz ✓' : 'FFP2 ✓') : '✗'}${this.panneau ? ' · Panneau ' + Math.max(0, Math.round(this.panneauHp)) : ''}`,
     };
   }

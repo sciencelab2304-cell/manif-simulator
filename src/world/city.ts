@@ -599,7 +599,8 @@ export class City {
       this.pickupSpots.push({ x, y: groundY(x, z) + 0.1, z, kind: kinds[Math.floor(this.rnd() * kinds.length)] });
     }
     // a few fireworks bags and makeshift shields
-    for (const [x, z, k] of [[-12.5, 30, 'mortier'], [12.8, -20, 'mortier'], [-12.7, -48, 'fusee'], [12.6, -78, 'mortier'], [-12.4, -105, 'fusee'],
+    for (const [x, z, k] of [[-12.5, 30, 'mortier'], [12.4, 22, 'fusee'], [12.8, -20, 'mortier'], [-12.6, -10, 'fusee'], [-12.7, -48, 'fusee'], [12.5, -40, 'mortier'],
+      [12.6, -78, 'mortier'], [-12.5, -70, 'fusee'], [-12.4, -105, 'fusee'], [12.6, -95, 'mortier'],
       [12.7, 10, 'panneau'], [-12.8, -30, 'panneau'], [-12.5, -2, 'serum'], [12.5, -60, 'masque'], [-13, -120, 'fumigene']] as [number, number, string][]) {
       this.pickupSpots.push({ x, y: 0.25, z, kind: k });
     }
