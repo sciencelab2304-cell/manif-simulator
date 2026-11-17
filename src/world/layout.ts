@@ -16,6 +16,7 @@ export const PLACE_HALF_X = 55;
 export const MONUMENT = { x: 0, z: -248, r: 5 };
 
 export const CRS_LINE_Z = -150; // initial police line
+export const BREACH_STEP = 17; // the line falls back this far when the protesters' push gauge is full
 export const VAN_Z = -166;
 export const TRUCK_Z = -180;
 export const OBJECTIVE = { x: 0, z: -228, r: 18 }; // protester goal on the place

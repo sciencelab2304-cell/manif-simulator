@@ -304,6 +304,7 @@ export class Projectiles {
     if (o.fire) ctx.destruction.igniteAround(pos, o.radius * 0.8, o.by);
     ctx.crowd.panic(pos, o.radius * 3.5, 1);
     ctx.tension.add(firework ? 2.5 : o.kind === 'sting' ? 2 : 3, 'explosion');
+    if (firework && Math.abs(pos.z - ctx.crowd.police.lineZ) < 7) ctx.crowd.shake(6);
   }
 
   // ------------------------------------------------------------------ update

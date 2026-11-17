@@ -133,7 +133,7 @@ export class Sync {
     });
     const T = ctx.truck, P_ = ctx.crowd.police;
     const head = [ctx.time, ctx.tension.value, ctx.tension.phase, ctx.tension.sommations, MODES.indexOf(P_.mode), P_.lineZ,
-      T.pos.x, T.pos.z, T.yaw, T.turretYaw, T.turretPitch, T.spraying ? 1 : 0, T.tank, T.driverId, ctx.crowd.humanArrests, +T.refilling];
+      T.pos.x, T.pos.z, T.yaw, T.turretYaw, T.turretPitch, T.spraying ? 1 : 0, T.tank, T.driverId, ctx.crowd.humanArrests, +T.refilling, P_.push, P_.pushers];
     const fires = ctx.destruction.fires.map((f) => [ctx.destruction.burnables.indexOf(f.burnable!), f.t, f.intensity]);
     const gas = ctx.gas.clouds.map((c) => [c.pos.x, c.pos.z, c.radius, c.conc]);
     const msg: Msg = ['s', head, a.buffer, new Float32Array(proj).buffer, new Float32Array(props).buffer, fires, gas, ctx.net.takeEvents(), this.fx];
@@ -226,6 +226,7 @@ export class Sync {
     const T = ctx.truck;
     T.pos.x = h[6]; T.pos.z = h[7]; T.yaw = h[8]; T.tank = h[12]; T.driverId = h[13]; T.refilling = !!h[15];
     ctx.crowd.humanArrests = h[14];
+    ctx.crowd.police.push = h[16]; ctx.crowd.police.pushers = h[17];
     if (!ctx.player.inVehicle) { T.turretYaw = h[9]; T.turretPitch = h[10]; T.spraying = !!h[11]; }
     T.body.setNextKinematicTranslation({ x: T.pos.x, y: 1.7, z: T.pos.z });
     T.body.setRotation({ x: 0, y: Math.sin(T.yaw / 2), z: 0, w: Math.cos(T.yaw / 2) }, true);

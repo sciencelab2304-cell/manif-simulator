@@ -102,6 +102,12 @@ export class Hud {
       $('objective').textContent = `Objectif : ${ctx.game.arrestGoal} interpellations, ou tenir la place · ${mm}:${ss}`;
       $('score-main').innerHTML = `<b>${ctx.crowd.humanArrests} / ${ctx.game.arrestGoal}</b> interpellations${ctx.net.multi ? ` · vous ${st.myArrests}` : ''}`;
     }
+    // the protesters' push on the police line (tug of war, see Crowd.updatePush)
+    const P = ctx.crowd.police, prot = ctx.camp === 'protest';
+    $('push').classList.toggle('hidden', ctx.tension.phase === 0);
+    $('push').classList.toggle('on', P.pushers > 0);
+    $('push-fill').style.width = `${P.push}%`;
+    $('push-label').textContent = P.pushers ? (prot ? 'Poussée en cours !' : 'Ça pousse sur la ligne !') : prot ? 'Poussée : collez-vous aux CRS' : 'Poussée : ligne tenue';
     $('score-sub').textContent = `Touchés ${st.hits} · Personnes ${st.peopleHit} · Tête ${st.headHits}`;
     $('clock').textContent = clock;
     // health

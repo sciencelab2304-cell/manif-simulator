@@ -32,7 +32,8 @@ export class Crowd {
   renderer: BodyRenderer;
   grid = new Map<number, NPC[]>();
   circleGrid = new Map<number, number[]>();
-  police = { mode: 'hold' as PoliceMode, lineZ: L.CRS_LINE_Z, modeT: 0, autoT: rr(35, 50), maxZ: -40, ordered: false };
+  /** `push` 0..100: the protesters' pressure on the line (see updatePush); full, the line falls back by BREACH_STEP. */
+  police = { mode: 'hold' as PoliceMode, lineZ: L.CRS_LINE_Z, modeT: 0, autoT: rr(35, 50), maxZ: -40, ordered: false, push: 0, pushers: 0 };
   marchHeadZ = 18;
   banners: Banner[] = [];
   center = new THREE.Vector3(0, 1.5, 0);
@@ -208,6 +209,7 @@ export class Crowd {
     if (mode === 'charge' && (P.mode === 'charge' || P.mode === 'regroup')) return;
     P.mode = mode; P.modeT = 0; P.ordered = true;
     if (mode === 'charge') {
+      P.push = Math.max(0, P.push - 35);
       ctx.tension.add(6, 'charge');
       ctx.audio.say('En avant ! Chargez !', { pitch: 0.9, rate: 1.1 });
       for (const n of this.all) if (n.role === 'crs' && n.weapon === 'shield' && n.standing && n.state === 'line') { n.setState('charge'); n.data.target = null; }
@@ -314,6 +316,7 @@ export class Crowd {
   private updatePolice(dt: number) {
     const P = this.police;
     P.modeT += dt;
+    this.updatePush(dt);
     if (P.mode === 'advance') {
       P.lineZ = Math.min(P.maxZ, P.lineZ + dt * 0.9);
       if (P.modeT > 8) { P.mode = 'hold'; P.modeT = 0; }
@@ -334,6 +337,41 @@ export class Crowd {
         else P.autoT = rr(10, 20);
       }
     }
+  }
+
+  /**
+   * Tug of war: human protesters pressed against the line (backed by the cortège behind them) push it, the standing
+   * CRS and the police players hold it. Full gauge: the line falls back towards the square.
+   */
+  private updatePush(dt: number) {
+    const P = this.police, z0 = P.lineZ;
+    let pushers = 0, crowd = 0, hold = 0;
+    for (const n of this.all) {
+      if (!n.standing || n.state === 'arrested' || n.state === 'escort' || n.state === 'cuffing') continue;
+      const dz = n.pos.z - z0;
+      if (n.camp === 'protest' && n.role !== 'medic' && n.role !== 'journalist') {
+        if (isHuman(n) ? dz > -2 && dz < 6 : dz > 0 && dz < 30) isHuman(n) ? pushers++ : crowd++;
+      } else if (n.camp === 'police' && dz > -6 && dz < (isHuman(n) ? 6 : 3)) hold += isHuman(n) ? 5 : 0.12;
+    }
+    P.pushers = ctx.tension.phase >= 1 ? pushers : 0;
+    const before = P.push;
+    P.push = clamp(P.push + (P.pushers ? (pushers * 6 + crowd * 0.3 - hold) * 1.4 : -2.5) * dt, 0, 100);
+    if (before < 50 && P.push >= 50) ctx.hud.feed('La ligne de CRS vacille !', '#ffd27a');
+    if (P.push >= 100) this.breach();
+  }
+
+  /** Something hit the line hard (fireworks): more pressure. */
+  shake(amount: number) { if (ctx.tension.phase >= 1) this.police.push = Math.min(99, this.police.push + amount); }
+
+  private breach() {
+    const P = this.police;
+    P.push = 0;
+    P.lineZ -= L.BREACH_STEP;
+    P.mode = 'regroup'; P.modeT = 0; P.ordered = false; P.autoT = rr(20, 30);
+    for (const n of this.all) if (n.role === 'crs' && n.state === 'charge') n.setState('line');
+    ctx.tension.add(8, 'percée');
+    const left = Math.max(0, Math.ceil((P.lineZ - L.PLACE_Z0 - 5) / L.BREACH_STEP));
+    ctx.hud.banner('PERCÉE !', left ? `La ligne de CRS recule. Encore ${left} poussée${left > 1 ? 's' : ''} jusqu'à la place.` : 'La ligne cède !');
   }
 
   // ------------------------------------------------------------------ brains

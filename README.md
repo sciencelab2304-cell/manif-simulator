@@ -119,6 +119,8 @@ src/
    street medics et pompiers qui évacuent.
 
 Objectifs : **manifestant** = atteindre la place ; **CRS** = interpeller 13 manifestants (8 + 5 par joueur CRS en multijoueur)
+
+**Poussée** (dès la phase « Tension ») : un manifestant joueur collé à la ligne de CRS (moins de 6 m) la pousse, aidé par le cortège derrière lui ; les CRS debout et les joueurs CRS proches la retiennent. Les fusées et mortiers qui explosent sur la ligne ajoutent de la poussée, une charge en retire. Jauge pleine : **percée**, la ligne recule de 17 m. Au bout de trois percées, elle cède et les manifestants gagnent.
 ou tenir la place 10 minutes (si 12 manifestants l'envahissent, c'est perdu). Le compteur est affiché en haut au centre.
 
 - **Menottage** : un manifestant ne peut être menotté qu'à 50 % de vie ou moins (ou à terre, ou gazé). F lance 2 s de menottage :

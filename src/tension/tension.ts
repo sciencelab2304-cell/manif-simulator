@@ -40,7 +40,7 @@ export class Tension {
     if (newPhase > this.phase) {
       this.phase = newPhase;
       if (newPhase === 1) {
-        ctx.hud.banner('TENSION', 'Les premières insultes fusent. Des projectiles volent.');
+        ctx.hud.banner('TENSION', 'Les projectiles volent. Manifestants : collez-vous à la ligne de CRS pour la faire reculer.');
       } else {
         ctx.hud.banner('ÇA PART EN CACAHUÈTE', 'Affrontements, lacrymos, incendies. Gardez la tête froide.');
         ctx.crowd.onChaos();

@@ -300,6 +300,7 @@ export class Game {
     }
     if (ctx.crowd.humanArrests >= this.arrestGoal) { this.finish('police', `${ctx.crowd.humanArrests} manifestants interpellés : le cortège se disperse.`); return; }
     if (ctx.time >= L.MATCH_SECONDS) { this.finish('police', 'La nuit est tombée : la police a tenu la place et le cortège s\'est dispersé.'); return; }
+    if (P.lineZ <= L.PLACE_Z0 + 5) { this.finish('protest', 'La ligne de CRS a cédé sous la poussée du cortège : la place est à vous.'); return; }
     let onPlace = 0;
     for (const n of ctx.crowd.all) if (n.camp === 'protest' && n.standing && n.pos.z < L.PLACE_Z0 + 10) onPlace++;
     if (onPlace >= 12) this.finish('protest', 'La ligne a cédé : les manifestants ont envahi la place.');

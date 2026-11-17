@@ -103,6 +103,11 @@ kbd { font-family: inherit; font-size: 11px; font-weight: 900; background: #2f35
 #score { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); padding: 6px 18px 7px; text-align: center; min-width: 240px; }
 #score-main { font-size: 17px; color: #fff; } #score-main b { font-size: 22px; color: var(--yellow); }
 #score-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+#push { position: relative; display: flex; align-items: center; justify-content: center; height: 16px; margin: 4px 0 2px; background: #0009; border-radius: 99px; overflow: hidden; }
+#push-fill { position: absolute; inset: 0 auto 0 0; background: var(--orange); border-radius: 99px; transition: width .2s; }
+#push.on #push-fill { animation: pushpulse .5s ease-in-out infinite alternate; }
+#push span { position: relative; white-space: nowrap; font-size: 10px; font-weight: 900; line-height: 16px; color: #fff; }
+@keyframes pushpulse { to { filter: brightness(1.5); } }
 #topleft { position: absolute; left: 14px; top: 12px; font-size: 13px; width: 300px; padding: 9px 14px 11px; }
 #place { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #phase { margin-top: 3px; font-size: 15px; } #phase b { color: var(--yellow); }
@@ -181,7 +186,7 @@ body.touch #keys, body.touch #controls { display: none; }
 body.touch #topleft, body.touch #fps, body.touch #wounds, body.touch #status, body.touch #score-sub, body.touch #extra,
 body.touch #health .lbl, body.touch #hp-num, body.touch .slot .k { display: none; }
 body.touch #touch .pills { left: calc(env(safe-area-inset-left) + 8px); right: auto; }
-body.touch #score { top: calc(env(safe-area-inset-top) + 6px); left: auto; right: calc(env(safe-area-inset-right) + 92px); transform: none; min-width: 0; padding: 3px 12px 4px; } body.touch #score-main { font-size: 13px; } body.touch #score-main b { font-size: 16px; }
+body.touch #score { top: calc(env(safe-area-inset-top) + 6px); left: auto; right: calc(env(safe-area-inset-right) + 92px); transform: none; min-width: 0; padding: 3px 12px 4px; } body.touch #score-main { font-size: 13px; } body.touch #score-main b { font-size: 16px; } body.touch #push { width: 190px; height: 14px; } body.touch #push span { font-size: 9px; line-height: 14px; }
 body.touch #minimap { width: 70px; height: 70px; border-width: 3px; right: calc(env(safe-area-inset-right) + 10px); top: calc(env(safe-area-inset-top) + 4px); }
 body.touch #health { inset: auto 0 0 0; padding: 0; border-radius: 0; background: none; }
 body.touch #health .col { min-width: 0; flex: 1; }
