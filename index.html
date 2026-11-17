@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#12142a" />
+  <title>Pavés — Valbrune</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="hitmarker"></div>
+    <div id="combo"></div>
+    <div id="score"><div id="score-main"></div><div id="score-sub"></div></div>
+    <div id="scope"><div class="ring"></div><div class="dot"></div></div>
+    <div id="charge"><div id="charge-fill"></div></div>
+    <div id="prompt"></div>
+    <div id="progress"><div id="progress-label"></div><div class="bar"><div id="progress-fill"></div></div></div>
+    <div id="topleft">
+      <div id="place">Boulevard des Tanneurs · Valbrune · <span id="clock">16h30</span></div>
+      <div id="phase">Phase : <b>Calme</b></div>
+      <div id="tension"><div id="tension-fill"></div></div>
+      <div id="objective"></div>
+    </div>
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="fps"></div>
+    <div id="health">
+      <div id="wounds"></div>
+      <div class="col">
+        <div class="hp"><span class="lbl">PV</span><span id="hp-num">100</span><div class="bar"><div id="hp-fill"></div></div></div>
+        <div id="status"></div>
+      </div>
+    </div>
+    <div id="feed"></div>
+    <div id="invwrap"><div id="inventory"></div><div id="extra"></div></div>
+    <div id="vehicle" class="hidden"><span id="tank-label">Canon à eau · réservoir</span><div class="bar"><div id="tank-fill"></div></div></div>
+    <div id="banner"></div>
+    <div id="speaker"></div>
+    <div id="keys"></div>
+  </div>
+
+  <div id="menu" class="screen">
+    <div class="menu-inner">
+      <div class="kicker">Valbrune · fiction</div>
+      <h1>PAVÉS</h1>
+      <p class="sub">Fin d'après-midi sur le boulevard des Tanneurs. Le cortège descend vers la place de la Concorde-Neuve, la ligne de CRS l'attend. Pour l'instant, tout est calme.</p>
+      <div class="pegi">18+ · violence réaliste, sang</div>
+      <label class="pseudo">Pseudo <input id="pseudo" maxlength="16" placeholder="Anonyme" autocomplete="nickname"></label>
+      <div class="camps">
+        <button class="camp sel" data-camp="protest">
+          <div class="ct">Manifestant</div>
+          <div class="cd">Léger, mobile, peu de PV. Pavés, bouteilles, mortiers d'artifice, barricades. Objectif : atteindre la place.</div>
+        </button>
+        <button class="camp" data-camp="police">
+          <div class="ct">CRS</div>
+          <div class="cd">Casque, bouclier, armure. LBD, lacrymo, désencerclement, matraque, charge en groupe, canon à eau. Objectif : tenir la place.</div>
+        </button>
+      </div>
+      <div class="modes">
+        <button id="m-solo" disabled>Solo</button>
+        <button id="m-create" class="ghost" disabled>Créer une partie</button>
+        <span class="join"><input id="m-code" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false"><button id="m-join" class="ghost" disabled>Rejoindre une partie</button></span>
+      </div>
+      <details class="settings">
+        <summary>Réglages</summary>
+        <label>Sensibilité de visée <input type="range" id="s-sens" min="0.2" max="3" step="0.05"></label>
+        <label>Volume <input type="range" id="s-vol" min="0" max="1" step="0.05"></label>
+        <label>Champ de vision <input type="range" id="s-fov" min="60" max="100" step="1"></label>
+        <label>Qualité <select id="s-quality"><option value="mobile">Mobile</option><option value="low">Basse (portable modeste)</option><option value="medium">Moyenne</option><option value="high">Haute</option></select></label>
+        <label class="chk"><input type="checkbox" id="s-blood"> Sang et blessures visibles</label>
+        <label class="chk"><input type="checkbox" id="s-invert"> Inverser l'axe vertical</label>
+        <label class="chk"><input type="checkbox" id="s-third"> Vue à la 3e personne (touche P en jeu)</label>
+      </details>
+      <div id="loading">Chargement du moteur physique…</div>
+      <p class="warn">Ville, lieux et personnages inventés. Toute ressemblance serait fortuite.</p>
+    </div>
+  </div>
+
+  <div id="lobby" class="screen hidden">
+    <div class="menu-inner">
+      <div class="kicker">Partie en ligne · 8 joueurs max.</div>
+      <div class="code">Code <b id="l-code">·····</b><button id="l-copy" class="ghost">Copier</button><button id="l-share" class="ghost">Partager</button></div>
+      <p class="sub">Vos amis choisissent « Rejoindre une partie » et saisissent ce code (ou ouvrent le lien partagé).</p>
+      <ul id="l-list"></ul>
+      <button id="l-ready">Prêt</button>
+      <button id="l-camp" class="ghost">Changer de camp</button>
+      <button id="l-start">Lancer la partie</button>
+      <button id="l-quit" class="ghost">Quitter</button>
+      <div id="l-status"></div>
+    </div>
+  </div>
+
+  <div id="pause" class="screen hidden">
+    <div class="menu-inner">
+      <h2>Pause</h2>
+      <p class="sub" id="pause-net">Partie en ligne : le jeu continue pendant que vous êtes dans ce menu.</p>
+      <button id="resume">Reprendre</button>
+      <button id="restart" class="ghost">Recommencer</button>
+      <button id="quit" class="ghost">Menu principal</button>
+      <div id="controls"></div>
+    </div>
+  </div>
+
+  <div id="end" class="screen hidden">
+    <div class="menu-inner">
+      <div class="kicker" id="end-kicker">Fin</div>
+      <h2 id="end-title"></h2>
+      <p class="sub" id="end-reason"></p>
+      <div id="end-stats"></div>
+      <button id="again">Rejouer</button>
+      <button id="switch" class="ghost">Changer de camp</button>
+    </div>
+  </div>
+
+  <div id="rotate"><div>↻</div>Tournez votre téléphone à l'horizontale pour jouer.</div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
