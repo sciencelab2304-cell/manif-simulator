@@ -1,6 +1,6 @@
 import Peer, { type DataConnection, type PeerOptions } from 'peerjs';
 import type { Camp } from '../core/context';
-import { Mqtt, packMsg, unpackMsg } from './relay';
+import { relay, type RelaySend } from './relay';
 
 /**
  * Peer-to-peer link (WebRTC through PeerJS). The host's peer id is derived from the game code, so the code is all a
@@ -15,11 +15,15 @@ interface Link { peer: string; send(m: Msg): void; close(): void; onData(fn: (m:
 const direct = (c: DataConnection): Link => ({
   peer: c.peer, send: (m) => c.send(m), close: () => c.close(), onData: (fn) => c.on('data', (d) => fn(d as Msg)), onClose: (fn) => c.on('close', fn),
 });
+/** A player (or the host) reached through the relay. Silent for 30 s = gone: phones drop sockets without a word. */
 class RelayLink implements Link {
+  seen = Date.now();
   private data: (m: Msg) => void = () => {};
   private closed = () => {};
-  constructor(public peer: string, public send: (m: Msg) => void, private bye: () => void) {}
-  close() { this.bye(); this.end(); }
+  constructor(public peer: string, private to: string, private out: RelaySend) {}
+  post(kind: string, m?: Msg) { this.out(this.to, kind, m); }
+  send(m: Msg) { this.post('data', m); }
+  close() { this.post('bye'); this.end(); }
   onData(fn: (m: Msg) => void) { this.data = fn; }
   onClose(fn: () => void) { this.closed = fn; }
   receive(m: Msg) { this.data(m); }
@@ -52,7 +56,8 @@ export class Net {
   onClosed: (why: string) => void = () => {};
   private peer: Peer | null = null;
   private conns = new Map<string, Link>();
-  private mqtt: Mqtt | null = null;
+  private relayLinks = new Map<string, RelayLink>();
+  private watch = 0;
   private events: Msg[] = [];
 
   get isHost() { return this.role === 'host'; }
@@ -73,7 +78,7 @@ export class Net {
       this.role = 'host'; this.code = code;
       this.members = [{ id: this.me, name, camp, ready: true }];
       this.peer!.on('connection', (c) => this.accept(direct(c)));
-      this.hostRelay().catch(() => { /* direct connections only */ });
+      this.hostRelay();
       return code;
     }
     throw new Error('Impossible de réserver un code de partie.');
@@ -120,46 +125,54 @@ export class Net {
   }
 
   // ------------------------------------------------------------------ relay (relay.ts)
-  private topic(s: string) { return `${PREFIX}${this.code}/${s}`; }
-
-  /** The host listens on the relay too, for the players who cannot reach it directly. */
-  private async hostRelay() {
-    const m = await Mqtt.connect('pv-' + this.me, { topic: this.topic('all'), payload: packMsg(['bye']) });
-    if (this.role !== 'host') return m.close();
-    this.mqtt = m;
-    const links = new Map<string, RelayLink>();
-    m.onMessage = (_, p) => {
-      const [id, kind, msg] = unpackMsg<[string, string, Msg]>(p);
-      const to = (x: Msg) => m.publish(this.topic('c/' + id), packMsg(x));
-      let l = links.get(id);
-      if (kind === 'open') {
-        if (!l) { l = new RelayLink(id, (x) => to(['data', x]), () => to(['bye'])); links.set(id, l); this.accept(l); }
-        to(['ack']);
-      } else if (kind === 'data') l?.receive(msg);
-      else if (kind === 'bye' && l) { links.delete(id); l.end(); }
-    };
-    await m.subscribe(this.topic('h'));
+  /** The host also answers the players who cannot reach it directly. */
+  private hostRelay() {
+    const send = relay(this.peer!, (id, kind, m) => {
+      let l = this.relayLinks.get(id);
+      if (!l && kind === 'open') { l = new RelayLink(id, id, send); this.relayLinks.set(id, l); this.accept(l); }
+      if (kind === 'open') l?.post('ack');
+      this.relayed(id, kind, m as Msg);
+    });
+    this.watchRelay();
   }
 
-  private async joinRelay() {
-    const id = this.me, toHost = (x: Msg) => m.publish(this.topic('h'), packMsg([id, ...x]));
-    const m = await Mqtt.connect('pv-' + id, { topic: this.topic('h'), payload: packMsg([id, 'bye']) });
-    this.mqtt = m;
-    const link = new RelayLink('host', (x) => toHost(['data', x]), () => toHost(['bye']));
-    m.onClose = () => link.end();
-    const ready = m.subscribe(this.topic('c/' + id), this.topic('all'));
+  private joinRelay() {
+    const host = PREFIX + this.code;
     return new Promise<Link>((ok, ko) => {
-      // repeated until the host answers: our subscription, or the host's, may not be active yet
-      let hello = 0;
-      const t = setTimeout(() => { clearInterval(hello); m.close(); ko(new Error('Vos appareils n\'arrivent pas à se relier, même par le serveur relais. Réessayez dans un instant.')); }, 30000);
-      m.onMessage = (_, p) => {
-        const [kind, msg] = unpackMsg<[string, Msg]>(p);
+      const link = new RelayLink('host', host, relay(this.peer!, (id, kind, m) => {
+        if (id !== host) return;
         if (kind === 'ack') { clearTimeout(t); clearInterval(hello); ok(link); }
-        else if (kind === 'data') link.receive(msg);
-        else if (kind === 'bye') link.end();
-      };
-      ready.then(() => { toHost(['open']); hello = window.setInterval(() => toHost(['open']), 1000); });
+        this.relayed('host', kind, m as Msg);
+      }));
+      this.relayLinks.set('host', link);
+      // repeated until the host answers (it may be registering again with the server)
+      const hello = setInterval(() => link.post('open'), 1000);
+      const t = setTimeout(() => { clearInterval(hello); ko(new Error('Impossible de joindre l\'hôte, même par le serveur relais. Vérifiez que l\'hôte a bien le jeu ouvert à l\'écran, puis réessayez.')); }, 20000);
+      link.post('open');
+      this.watchRelay();
     });
+  }
+
+  private relayed(id: string, kind: string, m: Msg) {
+    const l = this.relayLinks.get(id);
+    if (!l) return;
+    l.seen = Date.now();
+    if (kind === 'data') l.receive(m);
+    else if (kind === 'bye') { this.relayLinks.delete(id); l.end(); }
+  }
+
+  /** Keeps the relay links alive (ping every 3 s) and drops the silent ones. */
+  private watchRelay() {
+    let tick = Date.now();
+    this.watch = window.setInterval(() => {
+      const now = Date.now();
+      // timers were frozen (page in the background): nobody can be blamed for that silence
+      if (now - tick > 6000) for (const l of this.relayLinks.values()) l.seen = now;
+      tick = now;
+      for (const [id, l] of this.relayLinks) {
+        if (now - l.seen > 30000) { this.relayLinks.delete(id); l.end(); } else l.post('ping');
+      }
+    }, 3000);
   }
 
   private open(id?: string) {
@@ -226,7 +239,7 @@ export class Net {
     const links = [...this.conns.values()];
     this.conns.clear();
     for (const c of links) c.close(); // through the relay, tells the other side
-    this.mqtt?.close(); this.mqtt = null;
+    clearInterval(this.watch); this.relayLinks.clear();
     this.peer?.destroy(); this.peer = null;
   }
 

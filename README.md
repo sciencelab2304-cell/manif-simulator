@@ -53,7 +53,7 @@ Menu principal : choisir son pseudo et son camp, puis :
 
 Si l'hôte quitte le navigateur un instant (pour envoyer le code par message, par exemple), le jeu se réinscrit tout seul auprès du serveur de mise en relation à son retour ; côté amis, « Rejoindre » réessaie quatre fois avant d'abandonner.
 
-Quand deux réseaux empêchent la connexion directe entre appareils (4G, box, IPv6/NAT64…), le jeu bascule tout seul sur un serveur relais public (MQTT sur WebSocket sécurisé : broker.hivemq.com, puis broker.emqx.io). `?relay=ws://hôte:port` remplace ce serveur, `?direct=0` force le passage par le relais pour le tester.
+Quand deux réseaux empêchent la connexion directe entre appareils (Wi-Fi d'école ou de fac, 4G, box, IPv6/NAT64…), le jeu bascule tout seul sur un relais : les messages passent par le serveur de mise en relation PeerJS lui-même, la seule connexion que ces réseaux filtrés laissent passer. `?direct=0` force le passage par le relais pour le tester.
 
 Dans le salon, chacun peut changer de camp et se déclarer prêt ; l'hôte lance la partie quand tout le monde est prêt.
 Une partie en cours ne s'arrête pas quand un joueur ouvre le menu pause. Un joueur qui part disparaît du jeu ;
