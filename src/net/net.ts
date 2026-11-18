@@ -127,7 +127,6 @@ export class Net {
     const m = await Mqtt.connect('pv-' + this.me, { topic: this.topic('all'), payload: packMsg(['bye']) });
     if (this.role !== 'host') return m.close();
     this.mqtt = m;
-    m.subscribe(this.topic('h'));
     const links = new Map<string, RelayLink>();
     m.onMessage = (_, p) => {
       const [id, kind, msg] = unpackMsg<[string, string, Msg]>(p);
@@ -139,6 +138,7 @@ export class Net {
       } else if (kind === 'data') l?.receive(msg);
       else if (kind === 'bye' && l) { links.delete(id); l.end(); }
     };
+    await m.subscribe(this.topic('h'));
   }
 
   private async joinRelay() {
@@ -146,19 +146,19 @@ export class Net {
     const m = await Mqtt.connect('pv-' + id, { topic: this.topic('h'), payload: packMsg([id, 'bye']) });
     this.mqtt = m;
     const link = new RelayLink('host', (x) => toHost(['data', x]), () => toHost(['bye']));
-    m.subscribe(this.topic('c/' + id), this.topic('all'));
     m.onClose = () => link.end();
+    const ready = m.subscribe(this.topic('c/' + id), this.topic('all'));
     return new Promise<Link>((ok, ko) => {
       // repeated until the host answers: our subscription, or the host's, may not be active yet
-      const hello = setInterval(() => toHost(['open']), 1000);
-      const t = setTimeout(() => { clearInterval(hello); m.close(); ko(new Error('Vos appareils n\'arrivent pas à se relier, même par le serveur relais. Réessayez dans un instant.')); }, 12000);
+      let hello = 0;
+      const t = setTimeout(() => { clearInterval(hello); m.close(); ko(new Error('Vos appareils n\'arrivent pas à se relier, même par le serveur relais. Réessayez dans un instant.')); }, 30000);
       m.onMessage = (_, p) => {
         const [kind, msg] = unpackMsg<[string, Msg]>(p);
         if (kind === 'ack') { clearTimeout(t); clearInterval(hello); ok(link); }
         else if (kind === 'data') link.receive(msg);
         else if (kind === 'bye') link.end();
       };
-      toHost(['open']);
+      ready.then(() => { toHost(['open']); hello = window.setInterval(() => toHost(['open']), 1000); });
     });
   }
 

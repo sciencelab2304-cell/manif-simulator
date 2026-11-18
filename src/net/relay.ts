@@ -5,7 +5,7 @@ import { pack, unpack, type Packable } from 'peerjs-js-binarypack';
  * a public MQTT broker over a secure WebSocket, which every network lets through. Messages are packed like PeerJS
  * does, so the game code does not see the difference (see Link in net.ts).
  */
-const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt']; // emqx: subscriptions active at once
 
 /** ?relay=ws://127.0.0.1:8888 replaces the public brokers (tests, LAN). */
 function brokers() {
@@ -33,6 +33,8 @@ export class Mqtt {
   onClose = () => {};
   private buf = new Uint8Array(0);
   private ping = 0;
+  private nextId = 1;
+  private subacks = new Map<number, () => void>();
   private constructor(private ws: WebSocket) {}
 
   /** Connects to the first broker that answers. `will` is published by the broker if we vanish. */
@@ -85,13 +87,19 @@ export class Mqtt {
   }
 
   private packet(type: number, body: Uint8Array) {
+    if (type === 0x90) { const id = (body[0] << 8) | body[1]; this.subacks.get(id)?.(); this.subacks.delete(id); return; }
     if (type !== 0x30) return; // PUBLISH, QoS 0: topic then payload
     const tl = (body[0] << 8) | body[1];
     this.onMessage(new TextDecoder().decode(body.subarray(2, 2 + tl)), body.subarray(2 + tl));
   }
 
+  /** Resolves once the broker confirms (SUBACK): before that, messages on these topics may be lost. */
   subscribe(...topics: string[]) {
-    this.ws.send(frame(0x82, [0, 1, ...topics.flatMap((t) => [...str(t), 0])]));
+    const id = this.nextId++;
+    return new Promise<void>((ok) => {
+      this.subacks.set(id, ok);
+      this.ws.send(frame(0x82, [id >> 8, id & 255, ...topics.flatMap((t) => [...str(t), 0])]));
+    });
   }
 
   publish(topic: string, payload: Uint8Array) {
