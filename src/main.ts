@@ -16,6 +16,10 @@ let game: Game | null = null;
 let audio: AudioEngine | null = null;
 const input = new Input(document.body);
 document.body.classList.toggle('touch', isTouch);
+// no page zoom on phones: double tap (also blocked in CSS) and pinch, which iOS Safari allows despite the viewport tag
+for (const t of ['gesturestart', 'dblclick']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
+let lastTap = 0; // older browsers: a second tap within 300 ms on the game controls is not a zoom (they act on pointerdown)
+$('hud').addEventListener('touchend', (e) => { if (e.timeStamp - lastTap < 300) e.preventDefault(); lastTap = e.timeStamp; }, { passive: false });
 
 // ------------------------------------------------------------------ settings UI
 const sens = $('s-sens') as HTMLInputElement, vol = $('s-vol') as HTMLInputElement, fov = $('s-fov') as HTMLInputElement;
