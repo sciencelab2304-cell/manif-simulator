@@ -5,7 +5,8 @@ import { pack, unpack, type Packable } from 'peerjs-js-binarypack';
  * Plan B when two players cannot reach each other directly (school Wi-Fi, mobile networks…): the game traffic goes
  * through the PeerJS signalling server itself, the one connection that filtered networks always let through since it
  * is what finds a game from its code. That server hands CANDIDATE messages to their recipient whatever they hold, so
- * ours travel as CANDIDATEs of a connection that does not exist, packed like PeerJS does.
+ * ours travel as CANDIDATEs of a connection that does not exist, packed like PeerJS does. The server closes the socket
+ * of anyone sending a CANDIDATE without a candidate object, hence the empty one.
  */
 const TAG = 'paves-relay';
 
@@ -26,5 +27,5 @@ export function relay(peer: Peer, onMessage: (from: string, kind: string, m: unk
     const [kind, m] = unpack(bytes(d.payload.d).buffer) as [string, unknown];
     onMessage(d.src, kind, m);
   });
-  return (to, kind, m) => p.socket.send({ type: 'CANDIDATE', dst: to, payload: { connectionId: TAG, d: b64(new Uint8Array(pack([kind, m] as Packable) as ArrayBuffer)) } });
+  return (to, kind, m) => p.socket.send({ type: 'CANDIDATE', dst: to, payload: { candidate: { candidate: '', sdpMLineIndex: 0, sdpMid: '0' }, type: 'data', connectionId: TAG, d: b64(new Uint8Array(pack([kind, m] as Packable) as ArrayBuffer)) } });
 }
