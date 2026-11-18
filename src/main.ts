@@ -48,7 +48,7 @@ async function online(how: 'create' | 'join') {
   if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = 'Saisissez le code de la partie.'; return; }
   busy(true, how === 'create' ? 'Création de la partie…' : 'Connexion à la partie…');
   try {
-    if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp, (n) => busy(true, `Partie pas encore trouvée, nouvel essai (${n + 1}/4)…`));
+    if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp, (msg) => busy(true, msg));
     busy(false);
     showLobby(net, start);
   } catch (e) {
