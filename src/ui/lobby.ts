@@ -39,7 +39,7 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
     $('l-ready').textContent = me?.ready ? 'Pas prêt' : 'Prêt';
     ($('l-start') as HTMLButtonElement).disabled = !net.allReady;
     status(net.isHost
-      ? net.members.length < 2 ? 'En attente de joueurs…' : net.allReady ? 'Tout le monde est prêt.' : 'En attente que tout le monde soit prêt…'
+      ? net.members.length < 2 ? 'En attente de joueurs… Gardez cette page ouverte à l\'écran pendant qu\'ils rejoignent.' : net.allReady ? 'Tout le monde est prêt.' : 'En attente que tout le monde soit prêt…'
       : me?.ready ? 'En attente du lancement par l\'hôte…' : 'Choisissez votre camp puis cliquez sur « Prêt ».');
   };
   net.onMembers = render;

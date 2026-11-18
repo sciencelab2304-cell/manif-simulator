@@ -58,26 +58,55 @@ export class Net {
     throw new Error('Impossible de réserver un code de partie.');
   }
 
-  async join(code: string, name: string, camp: Camp) {
+  /** Joins with a few retries: the host may be reconnecting to the signalling server (phone put in the background). */
+  async join(code: string, name: string, camp: Camp, onRetry: (attempt: number) => void = () => {}) {
     await this.open();
-    const c = this.peer!.connect(PREFIX + code.toUpperCase(), { reliable: true });
-    await new Promise<void>((ok, ko) => {
-      const t = setTimeout(() => ko(new Error('Partie introuvable (code ?)')), 12000);
-      this.peer!.once('error', (e) => { clearTimeout(t); ko(e.type === 'peer-unavailable' ? new Error('Partie introuvable : vérifiez le code.') : e); });
-      c.once('open', () => { clearTimeout(t); ok(); });
-    });
-    this.role = 'client'; this.code = code.toUpperCase();
+    let c: DataConnection | null = null;
+    for (let attempt = 1; !c; attempt++) {
+      try {
+        c = await this.connect(PREFIX + code);
+      } catch (e) {
+        if (attempt >= 4) throw e;
+        onRetry(attempt);
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+    this.role = 'client'; this.code = code;
     this.conns.set('host', c);
     c.on('data', (d) => this.fromHost(d as Msg));
     c.on('close', () => this.onClosed(this.started ? 'Partie terminée : l\'hôte a quitté.' : 'L\'hôte a fermé le salon.'));
     c.send(['hello', name, camp]);
   }
 
+  private connect(id: string) {
+    const c = this.peer!.connect(id, { reliable: true });
+    return new Promise<DataConnection>((ok, ko) => {
+      const fail = (e: Error) => { clearTimeout(t); this.peer!.off('error', onErr); c.close(); ko(e); };
+      const onErr = (e: { type: string }) => fail(e.type === 'peer-unavailable'
+        ? new Error('Partie introuvable. Vérifiez le code, et que l\'hôte garde le jeu ouvert à l\'écran (sans changer d\'appli ni verrouiller son téléphone).')
+        : new Error('Connexion impossible (' + e.type + ').'));
+      const t = setTimeout(() => fail(new Error('La partie existe, mais vos deux appareils n\'arrivent pas à se relier. Essayez tous en Wi-Fi, ou en partage de connexion depuis un même téléphone.')), 15000);
+      this.peer!.on('error', onErr);
+      c.once('open', () => { clearTimeout(t); this.peer!.off('error', onErr); ok(c); });
+    });
+  }
+
   private open(id?: string) {
     return new Promise<void>((ok, ko) => {
       const p = id ? new Peer(id, peerOptions()) : new Peer(peerOptions());
-      p.once('open', (me) => { this.me = me; this.peer = p; ok(); });
-      p.once('error', (e) => { p.destroy(); ko(e); });
+      p.once('open', (me) => {
+        this.me = me; this.peer = p; ok();
+        // the link to the signalling server drops (or silently dies) when a phone puts the page in the background:
+        // without it nobody can find the game any more, so register again with the same id
+        const back = () => { if (p.destroyed) clearInterval(iv); else if (p.disconnected) p.reconnect(); };
+        const iv = setInterval(back, 2000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden || p.destroyed) return;
+          if (!p.disconnected) p.disconnect();
+          p.reconnect();
+        });
+      });
+      p.once('error', (e) => { if (!this.peer) { p.destroy(); ko(e); } });
     });
   }
 

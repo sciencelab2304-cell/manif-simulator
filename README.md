@@ -51,6 +51,8 @@ Menu principal : choisir son pseudo et son camp, puis :
 - **Créer une partie** : le jeu affiche un code de 5 caractères (boutons « Copier » et « Partager » ; le lien partagé pré-remplit le code).
 - **Rejoindre une partie** : saisir le code reçu.
 
+Si l'hôte quitte le navigateur un instant (pour envoyer le code par message, par exemple), le jeu se réinscrit tout seul auprès du serveur de mise en relation à son retour ; côté amis, « Rejoindre » réessaie quatre fois avant d'abandonner.
+
 Dans le salon, chacun peut changer de camp et se déclarer prêt ; l'hôte lance la partie quand tout le monde est prêt.
 Une partie en cours ne s'arrête pas quand un joueur ouvre le menu pause. Un joueur qui part disparaît du jeu ;
 si l'hôte part, la partie se termine pour tout le monde. Un joueur à terre ou interpellé revient en jeu après quelques secondes.

@@ -44,11 +44,11 @@ const name = () => { const n = pseudo.value.trim().slice(0, 16) || 'Anonyme'; tr
 const busy = (b: boolean, msg = '') => { modeButtons.forEach((x) => (x.disabled = b)); $('loading').textContent = msg; };
 
 async function online(how: 'create' | 'join') {
-  const code = codeInput.value.trim().toUpperCase();
+  const code = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = 'Saisissez le code de la partie.'; return; }
   busy(true, how === 'create' ? 'Création de la partie…' : 'Connexion à la partie…');
   try {
-    if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp);
+    if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp, (n) => busy(true, `Partie pas encore trouvée, nouvel essai (${n + 1}/4)…`));
     busy(false);
     showLobby(net, start);
   } catch (e) {
