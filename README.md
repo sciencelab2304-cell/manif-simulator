@@ -124,6 +124,10 @@ src/
 
 Objectifs : **manifestant** = atteindre la place ; **CRS** = interpeller 13 manifestants (8 + 5 par joueur CRS en multijoueur)
 
+**Zone interdite** : une bande rouge peinte en travers de la rue, 10 m devant la ligne de CRS (elle recule avec la ligne). Dès qu'un manifestant joueur la franchit, à n'importe quelle phase, la police peut matraquer, menotter et tirer au LBD sans attendre les sommations, et les CRS au LBD visent d'abord l'intrus. Les lacrymos des CRS restent soumises aux sommations.
+
+**Passerelles** : trois escaliers montent le long des façades vers une passerelle à 3 m de haut (deux côté cortège, une derrière la ligne de CRS) : on y lance par-dessus les boucliers, on y est hors de portée des matraques.
+
 **Poussée** (dès la phase « Tension ») : un manifestant joueur collé à la ligne de CRS (moins de 6 m) la pousse, aidé par le cortège derrière lui ; les CRS debout et les joueurs CRS proches la retiennent. Les fusées et mortiers qui explosent sur la ligne ajoutent de la poussée, une charge en retire. Jauge pleine : **percée**, la ligne recule de 17 m. Au bout de trois percées, elle cède et les manifestants gagnent.
 ou tenir la place 10 minutes (si 12 manifestants l'envahissent, c'est perdu). Le compteur est affiché en haut au centre.
 
@@ -175,7 +179,8 @@ Le jeu détecte automatiquement un écran tactile et affiche les contrôles virt
 | Geste | Action |
 |---|---|
 | Pouce gauche, n'importe où sur la moitié gauche | joystick (le pousser jusqu'au bord = courir) |
-| Glisser sur la moitié droite | regarder / viser (on peut aussi glisser depuis FEU et Viser/Cloche) |
+| Glisser sur la moitié droite | regarder / viser (on peut aussi glisser depuis FEU et Cloche) |
+| Viser (CRS) | un appui pour épauler le LBD (ou lever le bouclier), un autre pour arrêter ; changer d'arme l'arrête aussi |
 | FEU | tirer / lancer (maintenir pour charger un lancer) / arroser au canon à eau |
 | Boutons autour de FEU | Cloche ou Viser, ramasser, saut, accroupi (bascule), objet ou arme suivant, barricade/feu, recharger, CHARGE, canon à eau, menotter |
 | Pastilles en haut | pause, masque, medic, slogan, sérum, panneau / avancer, tenir, soins |

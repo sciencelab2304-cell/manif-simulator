@@ -5,13 +5,14 @@ import { ctx, type Camp } from '../core/context';
  * Touch overlay for phones/tablets. It only drives the shared Input state: a floating joystick on the left,
  * a look pad on the right, and a few buttons that press the same key codes / mouse buttons as the keyboard.
  * Weapons are chosen by tapping the bar at the bottom (the protester's lighter is in it, instead of a fire button).
+ * Aiming is a switch (tap to aim, tap again to stop) so that the right thumb stays free to look and fire.
  */
-type Act = { key?: string; btn?: number; look?: boolean; fn?: () => void };
+type Act = { key?: string; btn?: number; look?: boolean; toggle?: boolean; fn?: () => void };
 type Btn = [label: string, act: Act];
 
 const RING: Record<Camp, Btn[]> = { // inner arc first (3 buttons), then the outer arc
   protest: [['Cloche', { btn: 2, look: true }], ['Ramas.', { key: 'KeyE' }]],
-  police: [['Viser', { btn: 2, look: true }], ['Rech.', { key: 'KeyR' }], ['Menotter', { key: 'KeyF' }], ['Canon', { key: 'KeyE' }], ['CHARGE', { key: 'KeyG' }]],
+  police: [['Viser', { btn: 2, toggle: true }], ['Rech.', { key: 'KeyR' }], ['Menotter', { key: 'KeyF' }], ['Canon', { key: 'KeyE' }], ['CHARGE', { key: 'KeyG' }]],
 };
 const PILLS: Record<Camp, Btn[]> = {
   protest: [['Masque', { key: 'KeyM' }], ['Sérum', { key: 'KeyK' }], ['Panneau', { key: 'KeyX' }], ['Medic', { key: 'KeyH' }]],
@@ -25,6 +26,7 @@ export class TouchControls {
   private base = document.createElement('div');
   private knob = document.createElement('div');
   private drags = new Map<number, (e: PointerEvent, end: boolean) => void>();
+  private untoggle = () => {};
 
   constructor(private input: Input, camp: Camp, onPause: () => void) {
     this.root.id = 'touch';
@@ -65,6 +67,7 @@ export class TouchControls {
       const slot = (e.target as HTMLElement).closest('.slot');
       if (!slot) return;
       const code = 'Digit' + (Array.prototype.indexOf.call(slot.parentElement!.children, slot) + 1);
+      this.untoggle(); // a new weapon starts lowered
       input.key(code, true); input.key(code, false);
     });
   }
@@ -80,6 +83,12 @@ export class TouchControls {
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       if (a.fn) return a.fn();
+      if (a.toggle) {
+        const on = !b.classList.contains('on');
+        this.untoggle(); set(on);
+        if (on) this.untoggle = () => { set(false); this.untoggle = () => {}; };
+        return;
+      }
       set(true);
       let lx = e.clientX, ly = e.clientY;
       this.drags.set(e.pointerId, (m, end) => {

@@ -11,7 +11,7 @@ import { canvas } from '../core/textures';
 
 const KINDS: ThrowKind[] = ['pave', 'canette', 'bouteille', 'conserve', 'mortier', 'fusee', 'fumigene', 'gas', 'sting'];
 const MODES = ['hold', 'advance', 'charge', 'regroup'] as const;
-const NPC_REC = 16; // shorts per NPC in a snapshot
+const NPC_REC = 17; // shorts per NPC in a snapshot
 const SNAP_DT = 1 / 15, ME_DT = 1 / 20;
 
 /** Effects the host replays on clients: object → methods (calls whose first argument is null are personal). */
@@ -61,7 +61,7 @@ export class Sync {
   private sentKey = new Map<string, string>();
   // client side
   meId = -1;
-  private goals = new Map<number, { x: number; z: number; yaw: number; vx: number; vz: number; at: number }>();
+  private goals = new Map<number, { x: number; y: number; z: number; yaw: number; vx: number; vz: number; at: number }>();
   private ghosts = new Map<number, { p: THREE.Vector3; q: THREE.Quaternion }>();
   private propGoals = new Map<number, { p: THREE.Vector3; q: THREE.Quaternion }>();
   private hostTime = 0;
@@ -114,7 +114,7 @@ export class Sync {
       const o = i * NPC_REC;
       const flags = (n.chant ? 1 : 0) | (n.handsUp ? 2 : 0) | (n.kneel ? 4 : 0) | (n.coverHead > 0 ? 8 : 0) | (n.aimT > 0 ? 16 : 0);
       a.set([n.id, n.pos.x * 100, n.pos.z * 100, wrap(n.yaw) * 1000, n.vel.x * 100, n.vel.z * 100, STATES.indexOf(n.state), flags,
-        n.throwT * 1000, n.strikeT * 1000, n.flinchT * 1000, n.wounds.limp * 1000, n.tint * 1000, n.downOffset.x * 100, n.downOffset.z * 100, n.hp / n.maxHp * 1000], o);
+        n.throwT * 1000, n.strikeT * 1000, n.flinchT * 1000, n.wounds.limp * 1000, n.tint * 1000, n.downOffset.x * 100, n.downOffset.z * 100, n.hp / n.maxHp * 1000, n.pos.y * 100], o);
     });
     // projectiles and props: only those that changed since the last snapshot
     const proj: number[] = [];
@@ -177,8 +177,8 @@ export class Sync {
         ctx.net.sendTo(from, ['init', this.initEvents()]);
         this.ready.add(from);
       } else if (type === 'me' && av) {
-        const [x, z, yaw, vx, vz, alive, crouch, aim, aggro, medic, car, hp, throttle, steer, ty, tp, spray] = a as number[];
-        av.apply({ x, y: 0, z, yaw, vx, vz, alive: !!alive, crouch: !!crouch, aim: !!aim, aggro, medic: !!medic, car: !!car, hp });
+        const [x, y, z, yaw, vx, vz, alive, crouch, aim, aggro, medic, car, hp, throttle, steer, ty, tp, spray] = a as number[];
+        av.apply({ x, y, z, yaw, vx, vz, alive: !!alive, crouch: !!crouch, aim: !!aim, aggro, medic: !!medic, car: !!car, hp });
         if (ctx.truck.driver === av) { ctx.truck.remote = { throttle, steer, spray: !!spray }; ctx.truck.turretYaw = ty; ctx.truck.turretPitch = tp; }
       } else if (type === 'act' && av) runAction(av, a[0] as string, a.slice(1));
       else if (type === 'left') {
@@ -212,7 +212,7 @@ export class Sync {
   // ------------------------------------------------------------------ client
   private report() {
     const p = ctx.player, f = p.feet, k = p.kit as { aiming?: boolean }, T = ctx.truck;
-    ctx.net.toHost(['me', f.x, f.z, p.yaw, p.vel.x, p.vel.z, +p.alive, +p.crouch, +!!k.aiming, p.aggro, +p.callMedic, +p.inVehicle, p.hp / p.maxHp,
+    ctx.net.toHost(['me', f.x, f.y, f.z, p.yaw, p.vel.x, p.vel.z, +p.alive, +p.crouch, +!!k.aiming, p.aggro, +p.callMedic, +p.inVehicle, p.hp / p.maxHp,
       T.remote.throttle, T.remote.steer, T.turretYaw, T.turretPitch, +T.remote.spray]);
   }
 
@@ -243,7 +243,7 @@ export class Sync {
       n.wounds.limp = a[o + 11] / 1000; n.tint = a[o + 12] / 1000;
       n.downOffset.set(a[o + 13] / 100, 0, a[o + 14] / 100);
       n.hp = a[o + 15] / 1000 * n.maxHp;
-      this.goals.set(n.id, { x: a[o + 1] / 100, z: a[o + 2] / 100, yaw: a[o + 3] / 1000, vx: a[o + 4] / 100, vz: a[o + 5] / 100, at: this.hostTime });
+      this.goals.set(n.id, { x: a[o + 1] / 100, y: a[o + 16] / 100, z: a[o + 2] / 100, yaw: a[o + 3] / 1000, vx: a[o + 4] / 100, vz: a[o + 5] / 100, at: this.hostTime });
     }
     // projectiles
     const pr = new Float32Array(projBuf as ArrayBuffer);
@@ -334,12 +334,12 @@ export class Sync {
       if (!n.standing) continue;
       if (n.hidden) { // our own body (seen in third person) follows us, not the host
         const p = ctx.player;
-        n.pos.set(p.feet.x, 0, p.feet.z); n.vel.set(p.vel.x, 0, p.vel.z); n.yaw = p.yaw + Math.PI; n.kneel = p.crouch;
+        n.pos.copy(p.feet); n.vel.set(p.vel.x, 0, p.vel.z); n.yaw = p.yaw + Math.PI; n.kneel = p.crouch;
         continue;
       }
       const x = g.x + g.vx * clamp(ahead, 0, 0.25), z = g.z + g.vz * clamp(ahead, 0, 0.25);
-      if (Math.hypot(x - n.pos.x, z - n.pos.z) > 4) n.pos.set(x, 0, z);
-      else { n.pos.x += (x - n.pos.x) * k; n.pos.z += (z - n.pos.z) * k; }
+      if (Math.hypot(x - n.pos.x, z - n.pos.z) > 4) n.pos.set(x, g.y, z);
+      else { n.pos.x += (x - n.pos.x) * k; n.pos.y += (g.y - n.pos.y) * k; n.pos.z += (z - n.pos.z) * k; }
       n.vel.set(g.vx, 0, g.vz);
       n.yaw += angleDiff(n.yaw, g.yaw) * k;
     }

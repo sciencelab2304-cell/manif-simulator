@@ -30,7 +30,8 @@ export class Tension {
   }
 
   get weaponsFree() { return this.phase >= 1; }
-  get gasAllowed() { return this.sommations >= 3 || this.phase >= 2; }
+  /** LBD and tear gas: after the last warning, in the chaos, or at once when a protester player enters the no-go band. */
+  get forceAllowed() { return this.sommations >= 3 || this.phase >= 2 || ctx.crowd.intrusion; }
 
   update(dt: number) {
     const drift = this.phase === 0 ? 2 : this.phase === 1 ? 0.3 : 0.05;

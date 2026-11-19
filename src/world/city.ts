@@ -54,6 +54,7 @@ export class City {
     this.busShelters();
     this.chantier();
     this.terrace();
+    this.walkways();
     this.place();
     this.policeVans();
     this.bins();
@@ -247,7 +248,7 @@ export class City {
         c.y = 1.925;
         panes.push({ pos: c, yaw, w: 2.3, h: 3.35, normal: N.clone() });
         // awnings on some bays
-        if (this.rnd() < 0.3) {
+        if (this.rnd() < 0.3 && !L.underWalkway(c.x, c.z, 1)) {
           const aw = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.3), awnMats[Math.floor(this.rnd() * awnMats.length)]);
           aw.position.copy(O).addScaledVector(R, b * 3 + 1.5).addScaledVector(N, 0.6); aw.position.y = 3.75;
           aw.rotation.set(0, yaw, 0); aw.rotateX(-Math.PI / 2 + 0.45);
@@ -280,6 +281,7 @@ export class City {
         if (z < L.CROSS_Z0 + 3 && z > L.CROSS_Z1 - 3) continue;
         if (s < 0 && z < -55 && z > -76) continue; // construction site
         if (s > 0 && z < 2 && z > -18) continue; // terrace
+        if (L.underWalkway(s * 11.3, z, 3)) continue;
         trunkPos.push(new THREE.Vector3(s * 11.3, 0.12, z));
       }
       for (let z = L.AVE_START - 10; z > L.AVE_END + 2; z -= 18) {
@@ -511,6 +513,43 @@ export class City {
     // café awning
     const aw = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 17), new THREE.MeshStandardMaterial({ color: 0x5a1a16, roughness: 0.9 }));
     aw.position.set(12.2, 3.4, -7.5); aw.rotation.z = -0.12; aw.castShadow = true; this.root.add(aw);
+  }
+
+  // ------------------------------------------------------------------ walkways
+  private walkways() {
+    const stone = new THREE.MeshStandardMaterial({ color: 0xb9b2a5, roughness: 0.9 });
+    const metal = new THREE.MeshStandardMaterial({ color: 0x2e5a4c, roughness: 0.5, metalness: 0.5 }); // green railings
+    const stoneGeos: THREE.BufferGeometry[] = [], metalGeos: THREE.BufferGeometry[] = [];
+    const P = ctx.physics, Y0 = 0.12, STEPS = 11, TREAD = 0.38;
+    /** Box both drawn and solid, from its corners. */
+    const solid = (geos: THREE.BufferGeometry[], x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) => {
+      const [ax, bx] = [Math.min(x0, x1), Math.max(x0, x1)], [az, bz] = [Math.min(z0, z1), Math.max(z0, z1)];
+      geos.push(normGeo(new THREE.BoxGeometry(bx - ax, y1 - y0, bz - az).translate((ax + bx) / 2, (y0 + y1) / 2, (az + bz) / 2)));
+      P.addStaticBox((ax + bx) / 2, (y0 + y1) / 2, (az + bz) / 2, (bx - ax) / 2, (y1 - y0) / 2, (bz - az) / 2);
+    };
+    for (const w of L.WALKWAYS) {
+      const s = w.side, dir = Math.sign(w.z1 - w.z0), wall = s * L.FACADE_X;
+      const inner = wall - s * L.STAIR_W, edge = wall - s * L.DECK_W, zs = w.z0 + dir * STEPS * TREAD;
+      // stairs against the wall, each step a solid block (the player's autostep climbs them)
+      for (let i = 0; i < STEPS; i++) solid(stoneGeos, wall, inner, 0, Y0 + (i + 1) * (L.DECK_Y - Y0) / STEPS, w.z0 + dir * i * TREAD, w.z0 + dir * (i + 1) * TREAD);
+      this.boxes.push({ x: (wall + inner) / 2, z: (w.z0 + zs) / 2, hx: L.STAIR_W / 2 + 0.3, hz: STEPS * TREAD / 2 + 0.3 });
+      // deck, railings (street side, far end, and the bit of the near end the stairs do not cover), posts
+      solid(stoneGeos, wall, edge, L.DECK_Y - 0.35, L.DECK_Y, zs, w.z1);
+      solid(metalGeos, edge, edge + s * 0.06, L.DECK_Y, L.DECK_Y + 1, zs, w.z1);
+      solid(metalGeos, wall, edge, L.DECK_Y, L.DECK_Y + 1, w.z1, w.z1 - dir * 0.06);
+      solid(metalGeos, inner, edge, L.DECK_Y, L.DECK_Y + 1, zs, zs + dir * 0.06);
+      solid(metalGeos, inner, inner - s * 0.06, Y0, L.DECK_Y + 1, zs, zs + dir * 0.06);
+      for (let z = zs + dir * 0.1; dir * (w.z1 - z) > -0.2; z += dir * 5) {
+        const zz = dir > 0 ? Math.min(z, w.z1 - 0.1) : Math.max(z, w.z1 + 0.1);
+        solid(metalGeos, edge + s * 0.03 - 0.07, edge + s * 0.03 + 0.07, 0, L.DECK_Y - 0.35, zz - 0.07, zz + 0.07);
+        this.circles.push({ x: edge, z: zz, r: 0.3 });
+      }
+    }
+    for (const [geos, m] of [[stoneGeos, stone], [metalGeos, metal]] as const) {
+      const mesh = new THREE.Mesh(mergeGeometries(geos), m);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      this.root.add(mesh);
+    }
   }
 
   // ------------------------------------------------------------------ place

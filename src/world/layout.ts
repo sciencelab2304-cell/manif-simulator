@@ -23,6 +23,19 @@ export const OBJECTIVE = { x: 0, z: -228, r: 18 }; // protester goal on the plac
 export const EVAC_PROTEST = { x: 0, z: 46 };
 export const EVAC_POLICE = { x: 4, z: -196 };
 export const MATCH_SECONDS = 600; // police must hold for 10 minutes
+/** Protesters this close to the police line (or past it): the police may use force without waiting for the warnings. */
+export const NO_GO = 10;
+
+/**
+ * Raised walkways along the facades (side -1 = west, 1 = east): stairs against the wall starting at z0, then a deck
+ * DECK_Y high (a head above the crowd) running to z1. Two on the protesters' side of the line, one behind it.
+ */
+export const DECK_Y = 3;
+export const DECK_W = 2.2; // from the facade
+export const STAIR_W = 1.3;
+export const WALKWAYS = [{ side: -1, z0: -102, z1: -134 }, { side: 1, z0: -106, z1: -138 }, { side: 1, z0: -190, z1: -158 }];
+export const underWalkway = (x: number, z: number, margin = 0) => WALKWAYS.some((w) => Math.sign(x) === w.side
+  && Math.abs(x) > FACADE_X - DECK_W - margin && z > Math.min(w.z0, w.z1) - margin && z < Math.max(w.z0, w.z1) + margin);
 
 export interface Rect { x0: number; x1: number; z0: number; z1: number } // x0<x1, z0<z1
 

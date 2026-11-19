@@ -218,12 +218,15 @@ export class NPC {
     this.vel.set(0, 0, 0);
   }
 
+  /** Height of the feet: the street, or a walkway for a human player. */
+  get floorY() { return Math.max(this.pos.y, groundY(this.pos.x, this.pos.z)); }
+
   /** Lying pose without physics. */
   layDown(dirYaw: number, quiet = false) {
     if (!quiet) ctx.net.emit(['lay', this.id, dirYaw]);
     const p = neutralPose();
     p.armLz = 0.5; p.armRz = -0.4; p.armLx = rr(-0.5, 0.3); p.thighL = rr(-0.3, 0.1); p.shinR = rr(0, 0.6);
-    _base.makeTranslation(this.pos.x, groundY(this.pos.x, this.pos.z) + 0.13, this.pos.z)
+    _base.makeTranslation(this.pos.x, this.floorY + 0.13, this.pos.z)
       .multiply(_m.makeRotationY(dirYaw + Math.PI))
       .multiply(_m.makeRotationX(-Math.PI / 2));
     applyPose(_base, p, this.mats);
@@ -369,12 +372,12 @@ export class NPC {
     if (this.wounds.concussion > 0) p.torsoRy += Math.sin(this.t * 2) * 0.2;
 
     const k = this.look.size;
-    _base.makeRotationY(this.yaw).scale(_s.set(k, k, k)).setPosition(this.pos.x, groundY(this.pos.x, this.pos.z), this.pos.z);
+    _base.makeRotationY(this.yaw).scale(_s.set(k, k, k)).setPosition(this.pos.x, this.floorY, this.pos.z);
     applyPose(_base, p, this.mats);
   }
 
   /** Hit test helper for melee & water: approximate zone from a world point. */
   zoneAt(p: THREE.Vector3): Zone {
-    return zoneFromPoint(_v.set(this.pos.x, groundY(this.pos.x, this.pos.z), this.pos.z), this.yaw, p, this.kneel ? 1 : 0);
+    return zoneFromPoint(_v.set(this.pos.x, this.floorY, this.pos.z), this.yaw, p, this.kneel ? 1 : 0);
   }
 }

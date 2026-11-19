@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ctx, type Camp, type Human } from '../core/context';
 import { rr, chance, clamp, pick, angleDiff } from '../core/util';
-import { bannerTexture } from '../core/textures';
+import { bannerTexture, signTexture } from '../core/textures';
 import { BodyRenderer, P } from './body';
 import { NPC, type Role } from './npc';
 import type { Avatar } from '../net/avatar';
@@ -43,8 +43,27 @@ export class Crowd {
   targetProtesters = 100;
   frontZ = 0; // z of the closest protester to the police line
 
+  /** Painted band across the street: past it, the police may shoot without waiting for the warnings (L.NO_GO). */
+  private noGo: THREE.Mesh;
+  intrusion = false;
+
   constructor() {
     this.renderer = new BodyRenderer(ctx.scene, 320, ctx.q.shadows);
+    const tex = signTexture('ZONE INTERDITE · ZONE INTERDITE · ZONE INTERDITE', '#a3121a', '#f4efe6', 1024, 40);
+    this.noGo = new THREE.Mesh(new THREE.PlaneGeometry(L.FACADE_X * 2, 0.8).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }));
+    this.noGo.position.y = 0.135;
+    this.noGo.receiveShadow = true;
+    ctx.scene.add(this.noGo);
+  }
+
+  /** A protester player in the no-go band or past the line: the police may use force at once (everywhere, host or not). */
+  private watchNoGo() {
+    const z = this.police.lineZ + L.NO_GO, was = this.intrusion;
+    this.noGo.position.z = z;
+    // clients know the other players only as NPCs tagged human
+    this.intrusion = this.all.some((n) => n.data.human && n.camp === 'protest' && n.standing && n.pos.z < z);
+    if (!this.intrusion || was || ctx.tension.phase >= 2 || ctx.tension.sommations >= 3) return;
+    ctx.hud.prompt(ctx.camp === 'police' ? 'Intrusion en zone interdite : usage de la force autorisé' : 'Zone interdite : la police peut tirer sans sommation', 3);
   }
 
   // ------------------------------------------------------------------ setup
@@ -241,6 +260,7 @@ export class Crowd {
       for (const h of this.humans) h.follow(dt);
     }
 
+    this.watchNoGo();
     let cx = 0, cz = 0, cn = 0, near = 0;
     this.frontZ = 999;
     for (const n of this.all) {
@@ -664,10 +684,8 @@ export class Crowd {
     n.target.set(n.slot.x, 0, P.lineZ - n.slot.row * 2.5);
     n.speed = P.mode === 'regroup' ? 2.5 : 1.6;
     n.faceYaw = 0;
-    if (ph === 0) return;
     // ranged weapons
-    const allowed = ctx.tension.gasAllowed || ph === 2;
-    if (n.weapon === 'lbd' && allowed && n.cooldown <= 0 && n.aimT <= 0) {
+    if (n.weapon === 'lbd' && ctx.tension.forceAllowed && n.cooldown <= 0 && n.aimT <= 0) {
       const target = this.lbdTarget(n);
       if (target) {
         n.aimT = 0.9;
@@ -676,7 +694,8 @@ export class Crowd {
         setTimeout(() => this.crsShoot(n), 900);
       } else n.cooldown = 2;
     }
-    if (n.weapon === 'grenade' && allowed && n.cooldown <= 0) {
+    // tear gas on the crowd only after the warnings: one runner does not gas everybody
+    if (n.weapon === 'grenade' && (ctx.tension.sommations >= 3 || ph === 2) && n.cooldown <= 0) {
       n.cooldown = ph === 2 ? rr(9, 16) : rr(18, 30);
       const c = this.clusterTarget(n);
       if (c) {
@@ -703,7 +722,8 @@ export class Crowd {
   }
 
   private lbdTarget(n: NPC): THREE.Vector3 | null {
-    const h = chance(0.6) && this.closestHuman('protest', n.pos, 38, 1.5);
+    const h = (this.intrusion && this.alive('protest').find((o) => o.feet.z < this.police.lineZ + L.NO_GO))
+      || (chance(0.6) && this.closestHuman('protest', n.pos, 38, 1.5));
     if (h) return h.feet.clone().setY(h.feet.y + 1.2);
     let best: NPC | null = null, bd = 40 * 40;
     for (const o of this.all) {

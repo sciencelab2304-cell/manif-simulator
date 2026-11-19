@@ -80,20 +80,20 @@ export class PoliceKit {
     // weapons
     if (w === 'lbd') {
       if (inp.btnPressed[0]) {
-        if (!(ctx.tension.gasAllowed || phase === 2)) this.say('Usage du LBD non autorisé : attendez les sommations.');
+        if (!ctx.tension.forceAllowed) this.say('LBD non autorisé : attendez les sommations, ou qu\'un manifestant entre dans la zone interdite.');
         else if (this.reloadT > 0) { /* busy */ }
         else if (this.chamber === 0) { this.say(this.ammo > 0 ? 'Vide ! [R] pour recharger' : 'Plus de munitions'); ctx.audio.click(); }
         else this.fireLBD();
       }
     } else if (w === 'baton') {
       if (inp.btnPressed[0] && this.cd <= 0 && !this.shieldUp) {
-        if (phase === 0) this.say('Pas d\'usage de la force pendant une manifestation pacifique.');
+        if (phase === 0 && !ctx.crowd.intrusion) this.say('Pas d\'usage de la force pendant une manifestation pacifique.');
         else this.strike();
       }
     } else {
       const count = w === 'gas' ? this.gas : this.sting;
       if ((inp.btnPressed[0]) && count > 0) {
-        if (w === 'gas' && !(ctx.tension.gasAllowed || phase === 2)) this.say('Lacrymogènes interdits avant les sommations.');
+        if (w === 'gas' && !ctx.tension.forceAllowed) this.say('Lacrymogènes interdits avant les sommations.');
         else if (w === 'sting' && phase < 2) this.say('Grenade de désencerclement : uniquement en situation de chaos.');
         else { this.charging = true; this.charge = 0; }
       }
@@ -183,7 +183,7 @@ export class PoliceKit {
       }
       return;
     }
-    if (ctx.tension.phase === 0) return;
+    if (ctx.tension.phase === 0 && !ctx.crowd.intrusion) return;
     const fwd = p.forward(_v2);
     const cand = ctx.crowd.nearest(p.feet, 2.4, (o) => o.camp === 'protest' && !o.hidden && o.state !== 'arrested' && o.state !== 'escort' && o.state !== 'evac'
       && _v.subVectors(o.pos, p.feet).setY(0).normalize().dot(_v2.set(fwd.x, 0, fwd.z).normalize()) > 0.5, true);

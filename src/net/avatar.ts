@@ -56,19 +56,19 @@ export class Avatar extends NPC implements Human {
   follow(dt: number, s?: HumanState) {
     if (this.local) {
       const p = ctx.player;
-      s = { x: p.feet.x, y: 0, z: p.feet.z, yaw: p.yaw, vx: p.vel.x, vz: p.vel.z, alive: p.alive, crouch: p.crouch, aim: false, aggro: p.aggro, medic: p.callMedic, car: p.inVehicle, hp: p.hp / p.maxHp };
+      s = { x: p.feet.x, y: p.feet.y, z: p.feet.z, yaw: p.yaw, vx: p.vel.x, vz: p.vel.z, alive: p.alive, crouch: p.crouch, aim: false, aggro: p.aggro, medic: p.callMedic, car: p.inVehicle, hp: p.hp / p.maxHp };
       p.medic = this.medic;
       if (p.vm.throwT > 0.3) this.throwT = Math.max(this.throwT, 0.5);
       if (p.vm.swingT > 0.35) this.strikeT = Math.max(this.strikeT, 0.4);
     }
     if (s) this.apply(s);
     const k = this.local ? 1 : 1 - Math.exp(-dt * 12);
-    this.pos.x = lerp(this.pos.x, this.goal.x, k); this.pos.z = lerp(this.pos.z, this.goal.z, k);
+    this.pos.lerp(this.goal, k);
     this.aggro = Math.max(0, this.aggro - dt * 0.08);
   }
 
   apply(s: HumanState) {
-    this.goal.set(s.x, 0, s.z);
+    this.goal.set(s.x, s.y, s.z);
     this.vel.set(s.vx, 0, s.vz);
     this.yaw += angleDiff(this.yaw, s.yaw + Math.PI);
     this.kneel = s.crouch;
