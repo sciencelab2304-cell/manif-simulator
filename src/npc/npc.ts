@@ -21,6 +21,56 @@ const HAIR = [0x1a1410, 0x2b1d14, 0x3b2a1c, 0x5a3c22, 0x8a6a3a, 0xc9a66b, 0x6a2f
 const BEANIES = [0x9a2222, 0x1f3a8a, 0x2e4a3a, 0xd9a21b, 0x333333, 0x6b4f7a];
 
 let NEXT_ID = 1;
+
+/** A random look for a role (call inside `withSeed` for a stable one). */
+export function makeLook(role: Role, weapon: Weapon): BodyLook {
+  const c = (h: number) => new THREE.Color(h);
+  const skin = c(pick(SKINS));
+  let top = c(pick(TOPS)), pants = c(pick(PANTS));
+  const acc = Array.from({ length: NACC }, () => new THREE.Color(0x222222));
+  const on = new Array(NACC).fill(false);
+  const size = role === 'crs' ? rr(0.98, 1.06) : rr(0.9, 1.08);
+  if (role !== 'crs' && role !== 'firefighter' && role !== 'casseur') {
+    on[ACC.hair] = chance(0.9);
+    acc[ACC.hair] = c(chance(0.15) ? pick(BEANIES) : pick(HAIR));
+  }
+  switch (role) {
+    case 'crs':
+      top = c(0x1a2333); pants = c(0x1a2333);
+      on[ACC.helmet] = true; acc[ACC.helmet] = c(0x1c2638);
+      on[ACC.vest] = true; acc[ACC.vest] = c(0x0f141c);
+      if (weapon === 'shield') { on[ACC.shield] = true; on[ACC.baton] = true; acc[ACC.baton] = c(0x111111); }
+      if (weapon === 'lbd') { on[ACC.gun] = true; acc[ACC.gun] = c(0x2a3a2a); }
+      if (weapon === 'grenade') { on[ACC.gun] = true; acc[ACC.gun] = c(0x333333); }
+      break;
+    case 'casseur':
+      top = c(0x0e0e0e); pants = c(0x121212); skin.lerp(c(0x101010), 0.85); // balaclava
+      if (chance(0.5)) { on[ACC.pack] = true; acc[ACC.pack] = c(0x151515); }
+      break;
+    case 'medic':
+      top = c(0xe8e8e8); on[ACC.helmet] = true; acc[ACC.helmet] = c(0xf2f2f2);
+      on[ACC.pack] = true; acc[ACC.pack] = c(0xc02020);
+      break;
+    case 'journalist':
+      on[ACC.helmet] = true; acc[ACC.helmet] = c(0x2a6bd1);
+      on[ACC.vest] = true; acc[ACC.vest] = c(0x2a6bd1);
+      on[ACC.camera] = true; acc[ACC.camera] = c(0x1a1a1a);
+      break;
+    case 'firefighter':
+      top = c(0x1b2230); pants = c(0x1b2230);
+      on[ACC.helmet] = true; acc[ACC.helmet] = c(0xd8dde2);
+      on[ACC.vest] = true; acc[ACC.vest] = c(0x2a3342);
+      break;
+    case 'curious':
+      if (chance(0.6)) { on[ACC.phone] = true; }
+      break;
+    default:
+      if (chance(0.3)) { on[ACC.pack] = true; acc[ACC.pack] = c(pick(TOPS)); }
+      if (chance(0.07)) { on[ACC.flag] = true; acc[ACC.flag] = c(pick([0xc0251c, 0xc0251c, 0x1f6f3a, 0xe3c11a, 0x1f3a8a])); }
+  }
+  return { skin, top, pants, acc, acc_on: on, size };
+}
+
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _m = new THREE.Matrix4();
 const _base = new THREE.Matrix4(), _s = new THREE.Vector3();
 
@@ -76,7 +126,6 @@ export class NPC {
   tint = 0; // blood on the clothes, 0..1
   bubbleT = 0;
   limpPhase = 0;
-  carryingFlag = false;
   data: any = {};
 
   /** `id` is only passed by clients, which mirror the NPCs created on the host. */
@@ -85,7 +134,7 @@ export class NPC {
     this.target.copy(pos);
     this.camp = role === 'crs' ? 'police' : role === 'firefighter' || role === 'journalist' ? 'neutral' : 'protest';
     this.maxHp = this.hp = role === 'crs' ? 100 : role === 'firefighter' ? 120 : rr(85, 110);
-    this.look = withSeed(this.id * 7919 + 13, () => this.makeLook());
+    this.look = withSeed(this.id * 7919 + 13, () => makeLook(role, weapon));
     if (role === 'crs') this.armor = { head: 0.6, torso: 0.45, armL: 0.3, armR: 0.3, legL: 0.25, legR: 0.25 };
     if (role === 'firefighter') this.armor = { head: 0.7, torso: 0.3 };
     if (role === 'medic' || role === 'journalist') this.armor = { head: 0.5 };
@@ -97,53 +146,7 @@ export class NPC {
     ctx.net.emit(['npc', this.id, role, weapon, pos.x, pos.z]);
   }
 
-  private makeLook(): BodyLook {
-    const c = (h: number) => new THREE.Color(h);
-    const skin = c(pick(SKINS));
-    let top = c(pick(TOPS)), pants = c(pick(PANTS));
-    const acc = Array.from({ length: NACC }, () => new THREE.Color(0x222222));
-    const on = new Array(NACC).fill(false);
-    const size = this.role === 'crs' ? rr(0.98, 1.06) : rr(0.9, 1.08);
-    if (this.role !== 'crs' && this.role !== 'firefighter' && this.role !== 'casseur') {
-      on[ACC.hair] = chance(0.9);
-      acc[ACC.hair] = c(chance(0.15) ? pick(BEANIES) : pick(HAIR));
-    }
-    switch (this.role) {
-      case 'crs':
-        top = c(0x1a2333); pants = c(0x1a2333);
-        on[ACC.helmet] = true; acc[ACC.helmet] = c(0x1c2638);
-        on[ACC.vest] = true; acc[ACC.vest] = c(0x0f141c);
-        if (this.weapon === 'shield') { on[ACC.shield] = true; on[ACC.baton] = true; acc[ACC.baton] = c(0x111111); }
-        if (this.weapon === 'lbd') { on[ACC.gun] = true; acc[ACC.gun] = c(0x2a3a2a); }
-        if (this.weapon === 'grenade') { on[ACC.gun] = true; acc[ACC.gun] = c(0x333333); }
-        break;
-      case 'casseur':
-        top = c(0x0e0e0e); pants = c(0x121212); skin.lerp(c(0x101010), 0.85); // balaclava
-        if (chance(0.5)) { on[ACC.pack] = true; acc[ACC.pack] = c(0x151515); }
-        break;
-      case 'medic':
-        top = c(0xe8e8e8); on[ACC.helmet] = true; acc[ACC.helmet] = c(0xf2f2f2);
-        on[ACC.pack] = true; acc[ACC.pack] = c(0xc02020);
-        break;
-      case 'journalist':
-        on[ACC.helmet] = true; acc[ACC.helmet] = c(0x2a6bd1);
-        on[ACC.vest] = true; acc[ACC.vest] = c(0x2a6bd1);
-        on[ACC.camera] = true; acc[ACC.camera] = c(0x1a1a1a);
-        break;
-      case 'firefighter':
-        top = c(0x1b2230); pants = c(0x1b2230);
-        on[ACC.helmet] = true; acc[ACC.helmet] = c(0xd8dde2);
-        on[ACC.vest] = true; acc[ACC.vest] = c(0x2a3342);
-        break;
-      case 'curious':
-        if (chance(0.6)) { on[ACC.phone] = true; }
-        break;
-      default:
-        if (chance(0.3)) { on[ACC.pack] = true; acc[ACC.pack] = c(pick(TOPS)); }
-        if (chance(0.07)) { on[ACC.flag] = true; acc[ACC.flag] = c(pick([0xc0251c, 0xc0251c, 0x1f6f3a, 0xe3c11a, 0x1f3a8a])); this.carryingFlag = true; }
-    }
-    return { skin, top, pants, acc, acc_on: on, size };
-  }
+  get carryingFlag() { return this.look.acc_on[ACC.flag]; }
 
   get standing() { return !this.ragdoll && !this.downMats && this.state !== 'gone'; }
   get isDown() { return !!this.ragdoll || !!this.downMats; }

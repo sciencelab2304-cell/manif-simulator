@@ -17,6 +17,8 @@ interface Banner { a: NPC; b: NPC; mesh: THREE.Mesh; fallen: boolean }
 const BANNERS = ['VALBRUNE DEBOUT', 'ON LÂCHE RIEN', 'DES SALAIRES, PAS DES MISÈRES', 'NOS VIES VALENT PLUS', 'TOUS ENSEMBLE'];
 const BANNER_COLS: [string, string][] = [['#c0251c', '#ffffff'], ['#f2efe6', '#b81d14'], ['#1d1d1d', '#f2efe6'], ['#2a5a9a', '#ffffff'], ['#e3c11a', '#1d1d1d']];
 
+/** Walking pace of the march (m/s) and of its head: about a minute from the start to the police line. */
+const MARCH = 2.6, MARCH_HEAD = 2.4;
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
 
 const isHuman = (n: NPC) => !!n.data.human;
@@ -262,7 +264,7 @@ export class Crowd {
     if (sim) {
       this.updatePolice(dt);
       const stopZ = this.police.lineZ + (ctx.tension.phase === 0 ? 14 : 9);
-      this.marchHeadZ = Math.max(stopZ, this.marchHeadZ - dt * 1.05);
+      this.marchHeadZ = Math.max(stopZ, this.marchHeadZ - dt * MARCH_HEAD);
       for (const h of this.humans) h.follow(dt);
     }
 
@@ -462,7 +464,7 @@ export class Crowd {
     }
     if (n.state !== 'march' && n.state !== 'mill') n.setState('march');
     this.marchTarget(n);
-    n.speed = 1.2 + (n.data.banner ? 0 : 0.15);
+    n.speed = MARCH - (n.data.banner ? 0.15 : 0);
     n.faceYaw = 0 + Math.PI; // facing the police (south = -z)
     // insults & gestures in the tension phase: the gauge creeps up
     if (ph >= 1 && n.pos.z - this.police.lineZ < 16 && chance(0.004)) ctx.tension.add(0.25, 'insultes');
@@ -518,7 +520,7 @@ export class Crowd {
     const ph = ctx.tension.phase;
     const lineZ = this.police.lineZ;
     n.chant = ph === 0 && chance(0.5);
-    if (ph === 0) { if (n.state !== 'march') n.setState('march'); this.marchTarget(n); n.speed = 1.25; n.faceYaw = Math.PI; return; }
+    if (ph === 0) { if (n.state !== 'march') n.setState('march'); this.marchTarget(n); n.speed = MARCH; n.faceYaw = Math.PI; return; }
     n.cooldown -= 0.3; n.cooldown2 -= 0.3;
     // ongoing actions
     if (n.state === 'smash' || n.state === 'barricade' || n.state === 'ignite' || n.state === 'fetch') return;
@@ -611,7 +613,7 @@ export class Crowd {
     n.setState('march');
     this.marchTarget(n, 1.2);
     n.target.z = Math.max(n.target.z, this.police.lineZ + 24);
-    n.speed = 1.3;
+    n.speed = MARCH;
   }
 
   private fireBrain(n: NPC) {

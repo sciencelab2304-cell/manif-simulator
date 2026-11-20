@@ -3,22 +3,12 @@ import { ctx, type Camp, type Human, type HitInfo } from '../core/context';
 import { NPC } from '../npc/npc';
 import type { DamageInfo } from '../damage/damage';
 import { angleDiff, lerp } from '../core/util';
-import { ACC } from '../npc/body';
-import type { LookSpec } from '../meta/shop';
+import { dress, type LookSpec } from '../meta/shop';
 
 /** What a client reports about its player ~20 times per second. */
 export interface HumanState {
   x: number; y: number; z: number; yaw: number; vx: number; vz: number;
   alive: boolean; crouch: boolean; aim: boolean; aggro: number; medic: boolean; car: boolean; hp: number; // share of max health
-}
-
-/** Shop skins on a body (the avatar on the host, the same body on every client). */
-export function dress(n: NPC, s?: LookSpec) {
-  if (!s) return;
-  const l = n.look;
-  if (s.top !== undefined) { l.top.setHex(s.top); l.pants.setHex(s.pants ?? s.top); }
-  if (s.noHair) l.acc_on[ACC.hair] = false;
-  for (const [a, c] of s.acc ?? []) { l.acc_on[a] = true; l.acc[a].setHex(c); }
 }
 
 /**
@@ -38,7 +28,7 @@ export class Avatar extends NPC implements Human {
     super(camp === 'police' ? 'crs' : 'pacifist', pos, camp === 'police' ? 'shield' : 'none');
     this.goal.copy(pos);
     this.data.human = { peer, name, look };
-    dress(this, look);
+    dress(this.look, look);
     ctx.net.emit(['human', this.id, peer, name, look]);
     if (this.local) { this.hidden = true; this.collider.setEnabled(false); }
   }

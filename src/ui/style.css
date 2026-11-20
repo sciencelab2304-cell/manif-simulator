@@ -103,6 +103,9 @@ kbd { font-family: inherit; font-size: 11px; font-weight: 900; background: #2f35
 .tabs { display: flex; gap: 8px; margin-top: 12px; } .tabs button { margin: 0; flex: 1; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .card { background: var(--panel-solid); border: 3px solid var(--line); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 13px; }
+#shop-preview { position: sticky; top: 0; flex: none; width: min(30vw, 300px); height: min(100vh, 560px); touch-action: pan-y; cursor: grab; }
+#shop .menu-inner { margin: 0; }
+.card { cursor: pointer; } .card.try { border-color: var(--yellow); }
 .card.on { border-color: var(--green); } .card .sw { width: 44px; height: 44px; border-radius: 12px; box-shadow: inset 0 -4px 0 #0005, 0 0 0 3px #0d0e1f; }
 .card button, .up button, .ch button { margin: 0; padding: 8px 12px; font-size: 13px; min-width: 92px; }
 .price { display: inline-flex; align-items: center; } .price .coin { width: 11px; height: 11px; margin-right: 6px; }

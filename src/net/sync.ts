@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { ctx, type Camp, type HitInfo } from '../core/context';
 import { NPC, STATES, type Role, type Weapon } from '../npc/npc';
 import type { Zone, DamageType } from '../damage/damage';
-import { Avatar, dress } from './avatar';
-import type { LookSpec } from '../meta/shop';
+import { Avatar } from './avatar';
+import { dress, type LookSpec } from '../meta/shop';
 import { runAction } from './actions';
 import type { Msg } from './net';
 import type { ThrowKind } from '../weapons/projectiles';
@@ -286,7 +286,7 @@ export class Sync {
         if (!n) return;
         const [, peer, name, look] = a as [number, string, string, LookSpec | undefined];
         n.data.human = { peer, name, look };
-        dress(n, look);
+        dress(n.look, look);
         if (peer === ctx.net.me) { n.hidden = true; n.collider.setEnabled(false); this.meId = n.id; }
         return;
       }

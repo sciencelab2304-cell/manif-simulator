@@ -1,10 +1,11 @@
 import type { Camp } from '../core/context';
 import { save, onSave, persist, resetSave } from '../meta/save';
 import { CURRENCY, xpNeeded, grant, matchRewards, type MatchResult } from '../meta/progression';
-import { ITEMS, SLOT_FR, owns, buy, toggleEquip, UPGRADES, upgradeCost, buyUpgrade, BOOSTS, MULTI_CAP, item, type Slot } from '../meta/shop';
+import { ITEMS, SLOT_FR, owns, buy, toggleEquip, UPGRADES, upgradeCost, buyUpgrade, BOOSTS, MULTI_CAP, item, lookSpec, gearOf, type Slot, type Tried } from '../meta/shop';
 import { lists, record, type Row } from '../meta/challenges';
 import { adsLeft, ADS_PER_DAY, showRewardedAd } from '../meta/ads';
 import { MAPS, mapById } from '../world/maps';
+import { showPreview } from './preview';
 
 /** Menu bar (Pavés d'or, level, XP), shop, challenges, rewarded ads, map choice and end-of-match rewards. */
 const $ = (id: string) => document.getElementById(id)!;
@@ -85,16 +86,18 @@ const wallet = () => `<div class="wallet"><i class="coin"></i><b>${save.coins}</
 
 // ------------------------------------------------------------------ shop
 function openShop(start: Camp) {
-  let tab: Camp = start;
+  let tab: Camp = start, tried: Tried = {};
+  const preview = () => showPreview($('shop-preview') as HTMLCanvasElement, tab, lookSpec(tab, tried), gearOf(tab, tried));
   const card = (id: string) => {
-    const i = item(id)!, own = owns(i), on = save.equipped[`${i.camp}.${i.slot}`] === i.id;
+    const i = item(id)!, own = owns(i), on = save.equipped[`${i.camp}.${i.slot}`] === i.id, trying = tried[i.slot] === i.id;
     const btn = on ? '<button class="ghost" data-act="equip" data-id="' + i.id + '">Retirer</button>'
       : own ? `<button data-act="equip" data-id="${i.id}">Équiper</button>`
       : i.level !== undefined ? `<button disabled>Niveau ${i.level}</button>`
       : `<button data-act="buy" data-id="${i.id}" ${save.coins < i.price! ? 'disabled' : ''}>${coin(i.price!)}</button>`;
-    return `<div class="card${on ? ' on' : ''}"><i class="sw" style="background:${hex(i.swatch)}"></i><b>${i.name}</b>${btn}</div>`;
+    return `<div class="card${on ? ' on' : ''}${trying ? ' try' : ''}" data-act="try" data-id="${i.id}"><i class="sw" style="background:${hex(i.swatch)}"></i><b>${i.name}</b>${btn}</div>`;
   };
   panel('shop', () => `<h2>Boutique</h2>${wallet()}
+    <p class="note">Touchez un objet pour l'essayer sur le personnage, faites glisser le personnage pour le tourner.</p>
     <div class="tabs">${(['protest', 'police'] as Camp[]).map((c) => `<button class="${c === tab ? '' : 'ghost'}" data-act="tab" data-camp="${c}">${CAMP_FR[c]}</button>`).join('')}</div>
     ${(Object.keys(SLOT_FR) as Slot[]).map((slot) => `<h3>${SLOT_FR[slot]}</h3><div class="grid">${ITEMS.filter((i) => i.camp === tab && i.slot === slot).map((i) => card(i.id)).join('')}</div>`).join('')}
     <h3>Améliorations permanentes</h3>
@@ -105,11 +108,14 @@ function openShop(start: Camp) {
         ${t >= u.tiers ? '<button disabled>Max</button>' : `<button data-act="up" data-id="${u.id}" ${save.coins < upgradeCost(t) ? 'disabled' : ''}>${coin(upgradeCost(t))}</button>`}</div>`;
     }).join('')}`, (el) => {
     const a = el.dataset.act, i = item(el.dataset.id ?? '');
-    if (a === 'tab') tab = el.dataset.camp as Camp;
-    else if (a === 'buy' && i) buy(i);
-    else if (a === 'equip' && i) toggleEquip(i);
+    if (a === 'tab') { tab = el.dataset.camp as Camp; tried = {}; }
+    else if (a === 'try' && i) tried[i.slot] = tried[i.slot] === i.id ? undefined : i.id;
+    else if (a === 'buy' && i) { buy(i); delete tried[i.slot]; }
+    else if (a === 'equip' && i) { toggleEquip(i); delete tried[i.slot]; }
     else if (a === 'up') buyUpgrade(UPGRADES.find((u) => u.id === el.dataset.id)!);
+    preview();
   });
+  preview();
 }
 
 // ------------------------------------------------------------------ challenges

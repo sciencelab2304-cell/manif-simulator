@@ -1,5 +1,5 @@
 import type { Camp } from '../core/context';
-import { ACC } from '../npc/body';
+import { ACC, type BodyLook } from '../npc/body';
 import { save, persist } from './save';
 
 /**
@@ -57,7 +57,10 @@ export const ITEMS: Item[] = [
 export const item = (id: string) => ITEMS.find((i) => i.id === id);
 
 export const owns = (i: Item) => save.owned.includes(i.id) || (i.level !== undefined && save.level >= i.level);
-export const equipped = (camp: Camp, slot: Slot) => item(save.equipped[`${camp}.${slot}`] ?? '');
+/** Items being tried on in the shop, by slot ('' = nothing). */
+export type Tried = Partial<Record<Slot, string>>;
+/** What a camp wears in a slot: the tried item, else the equipped one. */
+const worn = (camp: Camp, slot: Slot, tried: Tried) => item(tried[slot] ?? save.equipped[`${camp}.${slot}`] ?? '');
 
 export function buy(i: Item) {
   if (owns(i) || i.price === undefined || save.coins < i.price) return false;
@@ -77,10 +80,10 @@ export function toggleEquip(i: Item) {
 }
 
 /** The look of the local player for a camp (what the others see). */
-export function lookSpec(camp: Camp): LookSpec {
+export function lookSpec(camp: Camp, tried: Tried = {}): LookSpec {
   const s: LookSpec = { acc: [] };
   for (const slot of ['outfit', 'head', 'back'] as Slot[]) {
-    const l = equipped(camp, slot)?.look;
+    const l = worn(camp, slot, tried)?.look;
     if (!l) continue;
     if (l.top !== undefined) { s.top = l.top; s.pants = l.pants; }
     if (l.acc) s.acc!.push(...l.acc);
@@ -88,7 +91,14 @@ export function lookSpec(camp: Camp): LookSpec {
   }
   return s;
 }
-export const gearOf = (camp: Camp): Gear => ({ ...equipped(camp, 'weapon')?.gear });
+/** Shop skins on a body (the avatar on the host, the same body on every client). */
+export function dress(l: BodyLook, s?: LookSpec) {
+  if (!s) return;
+  if (s.top !== undefined) { l.top.setHex(s.top); l.pants.setHex(s.pants ?? s.top); }
+  if (s.noHair) l.acc_on[ACC.hair] = false;
+  for (const [a, c] of s.acc ?? []) { l.acc_on[a] = true; l.acc[a].setHex(c); }
+}
+export const gearOf = (camp: Camp, tried: Tried = {}): Gear => ({ ...worn(camp, 'weapon', tried)?.gear });
 
 // ------------------------------------------------------------------ upgrades
 export interface Upgrade { id: string; name: string; desc: Record<Camp, string>; tiers: number }
