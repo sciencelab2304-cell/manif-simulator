@@ -1,6 +1,7 @@
 /**
  * CrazyGames: when the game runs on their site, their SDK (v3) provides the ads (banners, rewarded and midgame
- * videos), the cloud save, invite links, the player's language and the gameplay events they ask for.
+ * videos), the cloud save, invite links and rooms (their "join / invite a friend" buttons), the player's account name
+ * and language, and the gameplay events they ask for.
  * Anywhere else (GitHub Pages, a local file) `sdk` stays null and every helper falls back to plain browser behaviour.
  * `?useLocalSdk=true` loads the SDK in its local test mode (demo ads and banners).
  * The SDK is started by this module itself (top-level await), so every module that reads the save, the settings
@@ -105,7 +106,22 @@ export function inviteLink(code: string) {
   return u.toString();
 }
 export const invitedCode = (): string | null =>
-  (sdk && (() => { try { return sdk.game.getInviteParam('code'); } catch { return null; } })()) || new URLSearchParams(location.search).get('code');
+  (sdk && (() => { try { return sdk.game.inviteParams?.code ?? sdk.game.getInviteParam('code'); } catch { return null; } })()) || new URLSearchParams(location.search).get('code');
+
+/** The online room the player is in (null: none), so that CrazyGames friends can join it while it is `joinable`. */
+export function room(code: string | null, joinable = false) {
+  if (sdk) safe(() => (code ? sdk.game.updateRoom({ roomId: code, isJoinable: joinable, inviteParams: { code } }) : sdk.game.leftRoom()));
+}
+/** Launched from CrazyGames' multiplayer page: the game should open a private room straight away. */
+export const instantMultiplayer = () => !!sdk?.game?.isInstantMultiplayer;
+/** A friend's room chosen on CrazyGames while the game is already open. */
+export function onJoinRoom(fn: (code: string) => void) {
+  if (sdk) safe(() => sdk.game.addJoinRoomListener((p: { code?: string; inviteParams?: { code?: string } }) => { const c = p?.code ?? p?.inviteParams?.code; if (c) fn(String(c)); }));
+}
+/** The CrazyGames account name (shown in game so that friends recognise each other), null when logged out. */
+export async function accountName(): Promise<string | null> {
+  try { return sdk ? (await sdk.user.getUser())?.username ?? null : null; } catch { return null; }
+}
 
 await init();
 loading(true);

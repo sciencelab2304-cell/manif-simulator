@@ -49,6 +49,8 @@ export const EN: Record<string, string> = {
   'Reprendre': 'Resume',
   'Recommencer': 'Restart',
   'Menu principal': 'Main menu',
+  'Rejouer avec le groupe': 'Play again with the group',
+  'En attente de l\'hôte…': 'Waiting for the host…',
   'Fin': 'The end',
   'Rejouer': 'Play again',
   'Faites glisser pour tourner': 'Drag to rotate',

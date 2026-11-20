@@ -1,8 +1,8 @@
 import type { Camp } from '../core/context';
-import type { Net } from '../net/net';
+import { MAX_PLAYERS, type Net } from '../net/net';
 import { mapCards, unlocked, CAMP_NAME } from './meta';
 import { mapById } from '../world/maps';
-import { inviteLink } from '../core/platform';
+import { inviteLink, room } from '../core/platform';
 import { t, tr } from '../core/i18n';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -28,6 +28,7 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
   $('l-ready').classList.toggle('hidden', net.isHost);
 
   const render = () => {
+    room(net.code, !net.started && net.members.length < MAX_PLAYERS);
     $('l-list').innerHTML = net.members.map((m, i) => `<li><span class="n">${esc(m.name)}${m.id === net.me ? `<i>${t('vous')}</i>` : ''}${i === 0 ? `<i>${t('hôte')}</i>` : ''}</span>`
       + `<span class="c ${m.camp}">${CAMP_NAME[m.camp]}</span><span class="r ${m.ready ? 'ok' : ''}">${t(m.ready ? '✓ prêt' : 'pas prêt')}</span></li>`).join('');
     // match options: the host chooses, the others see them

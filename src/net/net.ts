@@ -61,6 +61,8 @@ export class Net {
   handler: (m: Msg, from: string) => void = () => {};
   onMembers = () => {};
   onClosed: (why: string) => void = () => {};
+  /** the host starts the next match with the same group */
+  onAgain = () => {};
   private peer: Peer | null = null;
   private conns = new Map<string, Link>();
   private relayLinks = new Map<string, RelayLink>();
@@ -72,15 +74,20 @@ export class Net {
   get multi() { return this.role !== 'solo'; }
 
   // ------------------------------------------------------------------ lobby
-  /** Opens a game; resolves with its code. */
-  async create(name: string, camp: Camp): Promise<string> {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const code = Array.from({ length: 5 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
+  /**
+   * Opens a game; resolves with its code. `wanted`: the code of the previous match (same group again), retried for a
+   * few seconds while the signalling server still holds it.
+   */
+  async create(name: string, camp: Camp, wanted?: string): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const again = !!wanted && attempt < 5;
+      const code = again ? wanted! : Array.from({ length: 5 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
       try {
         await this.open(PREFIX + code);
       } catch (e) {
-        if ((e as { type?: string }).type === 'unavailable-id') continue;
-        throw e;
+        if ((e as { type?: string }).type !== 'unavailable-id') throw e;
+        if (again) await new Promise((r) => setTimeout(r, 1500));
+        continue;
       }
       this.role = 'host'; this.code = code;
       this.members = [{ id: this.me, name, camp, ready: true, looks: this.looks }];
@@ -224,6 +231,7 @@ export class Net {
   private fromHost(m: Msg) {
     if (m[0] === 'lobby') { this.members = m[1] as Member[]; this.options = m[2] as MatchOptions; this.onMembers(); }
     else if (m[0] === 'refused') this.onClosed(m[1] as string);
+    else if (m[0] === 'again') this.onAgain();
     else { if (m[0] === 'start') { this.members = m[1] as Member[]; this.options = m[2] as MatchOptions; this.started = true; } this.handler(m, 'host'); }
   }
 

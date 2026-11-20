@@ -11,7 +11,7 @@ import { showLobby } from './ui/lobby';
 import { Net } from './net/net';
 import { initMeta, selectedMap } from './ui/meta';
 import { lookSpec, rules } from './meta/shop';
-import { sdk, store, gameplay, loading, banners, invitedCode, siteMuted, onAdMute } from './core/platform';
+import { sdk, store, gameplay, loading, banners, invitedCode, siteMuted, onAdMute, room, onJoinRoom, instantMultiplayer, accountName } from './core/platform';
 import { t, tr, lang, setLang, type Lang } from './core/i18n';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -65,7 +65,7 @@ const AD_SLOTS = ['ad-left', 'ad-right'];
 const menuAds = (show: boolean) => banners(show, AD_SLOTS);
 const busy = (b: boolean, msg = '') => { modeButtons.forEach((x) => (x.disabled = b)); $('loading').textContent = tr(msg); };
 
-async function online(how: 'create' | 'join') {
+async function online(how: 'create' | 'join', wanted?: string) {
   const code = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = t('Saisissez le code de la partie.'); return; }
   busy(true, how === 'create' ? 'Création de la partie…' : 'Connexion à la partie…');
@@ -73,7 +73,7 @@ async function online(how: 'create' | 'join') {
   net.looks = { protest: lookSpec('protest'), police: lookSpec('police') };
   net.options = { map: selectedMap(), balanced: false };
   try {
-    if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp, (msg) => busy(true, msg));
+    if (how === 'create') await net.create(name(), camp, wanted); else await net.join(code, name(), camp, (msg) => busy(true, msg));
     busy(false);
     showLobby(net, start);
   } catch (e) {
@@ -90,6 +90,7 @@ codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') online('jo
 /** The connection ended: from the lobby, back to the menu; in a match, end screen. */
 net.onClosed = (why) => {
   net.leave();
+  room(null);
   if (game) { game.showEnd(null, why); return; }
   $('lobby').classList.add('hidden');
   $('menu').classList.remove('hidden');
@@ -115,8 +116,9 @@ function start(c: Camp) {
   // multiplayer: the menus lead back to the main menu, and the match keeps running behind the pause screen
   $('pause-net').classList.toggle('hidden', !net.multi);
   $('restart').classList.toggle('hidden', net.multi);
-  $('switch').classList.toggle('hidden', net.multi);
-  $('again').textContent = net.multi ? t('Menu principal') : t('Rejouer');
+  $('again').textContent = t(net.multi ? 'Rejouer avec le groupe' : 'Rejouer');
+  $('switch').textContent = t(net.multi ? 'Menu principal' : 'Changer de camp');
+  if (net.multi) room(net.code, false);
   // let the browser paint the message before the heavy city generation
   setTimeout(() => {
     try {
@@ -147,24 +149,51 @@ $('resume').addEventListener('click', () => { if (isTouch) { if (!sdk) enterFull
 $('app').addEventListener('click', () => { if (game && !ctx.over && !isTouch && !input.locked) input.lock(); });
 const restart = (c: Camp | null) => {
   net.leave();
+  room(null);
   try { if (c && !net.multi) sessionStorage.setItem('manif-autostart', c); else sessionStorage.removeItem('manif-autostart'); } catch { /* ignore */ }
   location.reload();
 };
 $('restart').addEventListener('click', () => restart(camp));
 $('quit').addEventListener('click', () => restart(null));
-$('again').addEventListener('click', () => restart(camp));
-$('switch').addEventListener('click', () => restart(camp === 'police' ? 'protest' : 'police'));
+$('again').addEventListener('click', () => {
+  if (!net.multi) restart(camp);
+  else if (net.isHost) again();
+  else { ($('again') as HTMLButtonElement).disabled = true; $('again').textContent = t('En attente de l\'hôte…'); } // the host's 'again' brings everybody back
+});
+$('switch').addEventListener('click', () => restart(net.multi ? null : camp === 'police' ? 'protest' : 'police'));
+/** Next match with the same group: the host opens the same room again after the reload, the others join it. */
+function again() {
+  const host = net.isHost;
+  if (host) net.broadcast(['again']);
+  try { sessionStorage.setItem('manif-again', JSON.stringify({ how: host ? 'create' : 'join', code: net.code, camp })); } catch { /* ignore */ }
+  setTimeout(() => restart(null), host ? 300 : 0);
+}
+net.onAgain = again;
+// a friend's room picked on CrazyGames while the game is open
+onJoinRoom((code) => {
+  if (game || net.multi) { try { sessionStorage.setItem('manif-again', JSON.stringify({ how: 'join', code, camp })); } catch { /* ignore */ } restart(null); }
+  else { codeInput.value = code; online('join'); }
+});
 $('l-quit').addEventListener('click', () => restart(null));
 window.addEventListener('pagehide', () => net.leave());
 
 // ------------------------------------------------------------------ boot
-initRapier().then(() => {
+initRapier().then(async () => {
   busy(false, 'Choisissez votre camp, puis appuyez sur Jouer.');
   loading(false);
   menuAds(true);
-  let auto: string | null = null;
-  try { auto = sessionStorage.getItem('manif-autostart'); sessionStorage.removeItem('manif-autostart'); } catch { /* ignore */ }
+  const account = await accountName(); // CrazyGames: friends see each other under their account name
+  if (account) { pseudo.value = account; pseudo.disabled = true; }
+  let auto: string | null = null, next: { how: 'create' | 'join'; code: string; camp: Camp } | null = null;
+  try {
+    auto = sessionStorage.getItem('manif-autostart'); sessionStorage.removeItem('manif-autostart');
+    next = JSON.parse(sessionStorage.getItem('manif-again') ?? 'null'); sessionStorage.removeItem('manif-again');
+  } catch { /* ignore */ }
   if (auto === 'protest' || auto === 'police') pickCamp(auto);
+  // straight into multiplayer: same group again, an invite link, or CrazyGames' multiplayer page
+  if (next) { pickCamp(next.camp); codeInput.value = next.code; online(next.how, next.code); }
+  else if (codeInput.value) online('join');
+  else if (instantMultiplayer()) online('create');
 }).catch((e) => { $('loading').textContent = t('Erreur de chargement : ') + e; });
 
 (window as any).__manif = ctx;
