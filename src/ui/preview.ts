@@ -23,7 +23,7 @@ function setup(canvas: HTMLCanvasElement) {
   const floor = new THREE.Mesh(new THREE.CircleGeometry(0.75, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 }));
   scene.add(floor);
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 20);
-  camera.position.set(0, 1.15, 4.6); camera.lookAt(0, 0.92, 0);
+  camera.position.set(0, 1.2, 5.3); camera.lookAt(0, 1.0, 0);
   canvas.onpointerdown = (e) => { drag = e.clientX; canvas.setPointerCapture(e.pointerId); };
   canvas.onpointermove = (e) => { if (drag === null) return; yaw += (e.clientX - drag) * 0.012; drag = e.clientX; };
   canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };

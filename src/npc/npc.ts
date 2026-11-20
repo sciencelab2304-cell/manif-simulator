@@ -3,7 +3,7 @@ import { ctx, type Camp } from '../core/context';
 import { RAPIER, G, groups } from '../core/physics';
 import { clamp, lerp, rr, chance, pick, withSeed } from '../core/util';
 import { Wounds, type DamageInfo, type Zone, zoneFromPoint } from '../damage/damage';
-import { applyPose, neutralPose, type Pose, type BodyLook, P, NPARTS, NACC, ACC } from './body';
+import { applyPose, neutralPose, type Pose, type BodyLook, P, NPARTS, NACC, ACC, COVERS_HAIR } from './body';
 import { Ragdoll } from './ragdoll';
 import { groundY } from '../world/city';
 
@@ -19,6 +19,10 @@ const TOPS = [0x2b2f3a, 0x5a2a25, 0x2e4a3a, 0x7a6a50, 0x1f3550, 0x8a8a84, 0x3a3a
 const PANTS = [0x1f2633, 0x2a2a2a, 0x3b4a5c, 0x4a4036, 0x22303f, 0x5a5a55, 0x34507a, 0x2c4466, 0x6b5a45];
 const HAIR = [0x1a1410, 0x2b1d14, 0x3b2a1c, 0x5a3c22, 0x8a6a3a, 0xc9a66b, 0x6a2f1a, 0x9a9a96, 0x111111];
 const BEANIES = [0x9a2222, 0x1f3a8a, 0x2e4a3a, 0xd9a21b, 0x333333, 0x6b4f7a];
+const SHOES = [0x1a1a1a, 0x2a2420, 0xe8e8e8, 0x4a3426, 0x3a3f4a, 0xd8d4cc, 0x7a1f1f];
+/** A few protesters come in fancy dress (painted accessories: white keeps their colours). */
+const FANCY = [ACC.party, ACC.clownNose, ACC.bunny, ACC.afro, ACC.shades, ACC.mustache, ACC.cowboy, ACC.crown, ACC.duck, ACC.topHat, ACC.heartGlasses, ACC.mohawk];
+const WIGS = [0xff5fa8, 0x3ad0ff, 0x7a3cff, 0x1a1410, 0xff7a1a, 0x3ae07a];
 
 let NEXT_ID = 1;
 
@@ -30,6 +34,8 @@ export function makeLook(role: Role, weapon: Weapon): BodyLook {
   const acc = Array.from({ length: NACC }, () => new THREE.Color(0x222222));
   const on = new Array(NACC).fill(false);
   const size = role === 'crs' ? rr(0.98, 1.06) : rr(0.9, 1.08);
+  const gloved = role === 'crs' || role === 'firefighter' || role === 'casseur';
+  const hands = gloved ? c(0x141414) : skin.clone(), shoes = c(gloved ? 0x111111 : pick(SHOES));
   if (role !== 'crs' && role !== 'firefighter' && role !== 'casseur') {
     on[ACC.hair] = chance(0.9);
     acc[ACC.hair] = c(chance(0.15) ? pick(BEANIES) : pick(HAIR));
@@ -67,8 +73,13 @@ export function makeLook(role: Role, weapon: Weapon): BodyLook {
     default:
       if (chance(0.3)) { on[ACC.pack] = true; acc[ACC.pack] = c(pick(TOPS)); }
       if (chance(0.07)) { on[ACC.flag] = true; acc[ACC.flag] = c(pick([0xc0251c, 0xc0251c, 0x1f6f3a, 0xe3c11a, 0x1f3a8a])); }
+      if (chance(0.08)) {
+        const f = pick(FANCY);
+        on[f] = true; acc[f] = c(f === ACC.afro || f === ACC.mohawk ? pick(WIGS) : 0xffffff);
+        if (COVERS_HAIR.includes(f)) on[ACC.hair] = false;
+      }
   }
-  return { skin, top, pants, acc, acc_on: on, size };
+  return { skin, top, pants, hands, shoes, acc, acc_on: on, size };
 }
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _m = new THREE.Matrix4();

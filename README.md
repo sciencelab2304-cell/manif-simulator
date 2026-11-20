@@ -100,6 +100,8 @@ Le paramètre `?peer=hôte:port` fonctionne aussi avec la version en ligne et le
 ```
 src/
   main.ts                 menu, réglages, pause
+  core/platform.ts        SDK CrazyGames (pubs, sauvegarde cloud, son, invitations), sans effet ailleurs
+  core/i18n.ts, en.ts     langue (anglais par défaut, français) et dictionnaire anglais
   net/                    multijoueur : liaison PeerJS et salon, actions des joueurs, synchronisation hôte → clients, avatars des joueurs
   game.ts                 boucle de jeu, objectifs, écran de fin, hélicoptère
   core/                   contexte partagé, physique (rapier), entrées clavier/souris/tactile, détection mobile, réglages, textures, utilitaires
@@ -146,14 +148,20 @@ ou tenir la place 10 minutes (si 12 manifestants l'envahissent, c'est perdu). Le
 
 ## Progression
 
-Tout est sauvegardé dans le navigateur (`localStorage`, clé `manif-progress-v1`) ; « Réinitialiser la progression » dans les Réglages remet tout à zéro.
+Tout est sauvegardé dans le navigateur (`localStorage`, clé `manif-progress-v1`), ou dans la sauvegarde cloud de CrazyGames sur leur site ; « Réinitialiser la progression » dans les Réglages remet tout à zéro.
 
 - **Pavés d'or** (la monnaie, affichée en haut du menu) : gagnés en fin de partie (participation, victoire, éliminations, coups au but, interpellations, survie), avec les défis, à chaque niveau et avec les pubs récompensées. Un emplacement « Acheter des Pavés d'or · bientôt » est prévu, sans paiement pour l'instant.
 - **Niveaux et XP** : barre dans le menu et en fin de partie. Chaque niveau rapporte des Pavés d'or ; certains débloquent des skins ou des cartes (Remparts au niveau 3, Gare au niveau 5).
-- **Boutique** : tenues, têtes, dos et skins d'armes séparés pour chaque camp (visibles par les autres joueurs en ligne), et 5 améliorations permanentes à 5 paliers, au prix croissant (munitions de départ, chargeurs, vie max, rechargement, résistance).
+- **Boutique** : tenues, têtes (casques, mais aussi haut-de-forme, sombrero, couronne, perruque afro, bicorne…), visage (lunettes, moustache, nez de clown), dos (cape, ailes d'ange, bouée canard) et skins d'armes séparés pour chaque camp (visibles par les autres joueurs en ligne), et 5 améliorations permanentes à 5 paliers, au prix croissant (munitions de départ, chargeurs, vie max, rechargement, résistance).
 - **En ligne** : les améliorations sont plafonnées au palier 2 ; l'hôte peut cocher « partie équilibrée » pour les couper, ainsi que les bonus de départ.
 - **Défis** : 3 quotidiens (renouvelés à minuit), 3 de la semaine (le lundi) et des succès permanents ; la récompense se récupère dans l'écran « Défis ».
-- **Pubs récompensées** (5 par jour) : +50 Pavés d'or, un bonus de départ pour la prochaine partie (munitions, vie, grenades) ou les gains de fin de partie doublés. Elles sont simulées (15 s, bouton « Fermer » à la fin seulement) ; `src/meta/ads.ts` explique comment brancher un vrai réseau (Google H5 Games Ads / AdSense for Games) avec `setAdProvider`, sans toucher au reste.
+- **Pubs récompensées** (5 par jour) : +50 Pavés d'or, un bonus de départ pour la prochaine partie (munitions, vie, grenades) ou les gains de fin de partie doublés. Sur CrazyGames ce sont leurs vraies pubs (SDK v3) ; ailleurs elles sont simulées (15 s, bouton « Fermer » à la fin seulement).
+
+## CrazyGames
+
+Sur un domaine crazygames (ou avec `?useLocalSdk=true` pour le mode test), `src/core/platform.ts` charge leur SDK v3 : bandeaux de pub sur les côtés du menu (écrans larges seulement, jamais en partie), pub entre deux parties, pubs récompensées, sauvegarde cloud, langue du compte, son coupé par le site, liens d'invitation, événements de jeu (chargement, partie en cours, victoire). Le sang est désactivé par défaut là-bas (PEGI 12). Ailleurs, tout retombe sur le navigateur.
+
+Langue : choisie avec les boutons en haut du menu (rechargement de la page), sinon celle du joueur, anglais par défaut. Le texte français sert de clé ; `src/core/en.ts` donne l'anglais.
 
 ## Cartes
 

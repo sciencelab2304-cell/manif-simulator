@@ -1,27 +1,29 @@
 import type { Camp } from '../core/context';
-import { ACC, type BodyLook } from '../npc/body';
+import { ACC, COVERS_HAIR, type BodyLook } from '../npc/body';
 import { save, persist } from './save';
 import { t, tAll } from '../core/i18n';
 
 /**
- * Shop catalogue and loadout: character skins per camp (outfit, head, back), weapon / equipment skins, permanent
+ * Shop catalogue and loadout: character skins per camp (outfit, head, face, back), weapon / equipment skins, permanent
  * upgrades in tiers. Items have a price in Pavés d'or, or unlock at a player level (then they are free).
  */
-export type Slot = 'outfit' | 'head' | 'back' | 'weapon';
-export const SLOT_FR: Record<Slot, string> = tAll({ outfit: 'Tenues', head: 'Têtes', back: 'Dos', weapon: 'Armes et équipement' });
+export type Slot = 'outfit' | 'head' | 'face' | 'back' | 'weapon';
+export const SLOT_FR: Record<Slot, string> = tAll({ outfit: 'Tenues', head: 'Têtes', face: 'Visage', back: 'Dos', weapon: 'Armes et équipement' });
 
-/** How a skin changes a body (colours as 0xRRGGBB); sent to the other players so they see it. */
-export interface LookSpec { top?: number; pants?: number; acc?: [number, number][]; noHair?: boolean }
+/** How a skin changes a body (colours as 0xRRGGBB, accessories switched on / off); sent to the other players so they see it. */
+export interface LookSpec { top?: number; pants?: number; hands?: number; acc?: [number, number][]; off?: number[] }
 /** First-person colours: weapon metal, hands (gloves), lighter. */
 export interface Gear { metal?: number; hand?: number; lighter?: number }
 
 export interface Item { id: string; camp: Camp; slot: Slot; name: string; price?: number; level?: number; look?: LookSpec; gear?: Gear; swatch: number }
 
-const H = ACC.helmet, HAIR = ACC.hair, PACK = ACC.pack, FLAG = ACC.flag, VEST = ACC.vest;
+const H = ACC.helmet, HAIR = ACC.hair, PACK = ACC.pack, FLAG = ACC.flag, VEST = ACC.vest, A = ACC;
 const outfit = (camp: Camp, id: string, name: string, top: number, pants: number, cost: number | { level: number }): Item =>
   ({ id, camp, slot: 'outfit', name: t(name), look: { top, pants }, swatch: top, ...(typeof cost === 'number' ? { price: cost } : cost) });
-const acc = (camp: Camp, slot: Slot, id: string, name: string, a: number, color: number, cost: number | { level: number }): Item =>
-  ({ id, camp, slot, name: t(name), look: { acc: [[a, color]], noHair: a === H }, swatch: color, ...(typeof cost === 'number' ? { price: cost } : cost) });
+/** A worn accessory; on the head it replaces the helmet, and hides the hair if it covers it. Painted ones keep `color` white. */
+const acc = (camp: Camp, slot: Slot, id: string, name: string, a: number, color: number, cost: number | { level: number }, swatch = color): Item =>
+  ({ id, camp, slot, name: t(name), look: { acc: [[a, color]], off: slot === 'head' ? [H, ...(COVERS_HAIR.includes(a) ? [HAIR] : [])] : [] }, swatch, ...(typeof cost === 'number' ? { price: cost } : cost) });
+const fun = (camp: Camp, slot: Slot, id: string, name: string, a: number, swatch: number, cost: number | { level: number }) => acc(camp, slot, id, name, a, 0xffffff, cost, swatch);
 const gear = (camp: Camp, id: string, name: string, g: Gear, cost: number | { level: number }): Item =>
   ({ id, camp, slot: 'weapon', name: t(name), gear: g, swatch: g.metal ?? g.hand ?? g.lighter ?? 0, ...(typeof cost === 'number' ? { price: cost } : cost) });
 
@@ -32,13 +34,33 @@ export const ITEMS: Item[] = [
   outfit('protest', 'p-vert', 'Survêtement vert', 0x1f7a44, 0x1f7a44, 250),
   outfit('protest', 'p-noir', 'Tout en noir', 0x161616, 0x121212, 350),
   outfit('protest', 'p-fluo', 'Gilet fluo', 0xd6e81a, 0x3a3f4a, { level: 6 }),
+  outfit('protest', 'p-pyjama', 'Pyjama rose', 0xf28bb8, 0xf28bb8, 300),
+  outfit('protest', 'p-dore', 'Costume doré', 0xd4a83a, 0xc89a30, 900),
   acc('protest', 'head', 'p-bonnet', 'Bonnet rouge', HAIR, 0xb2201a, 80),
   acc('protest', 'head', 'p-chantier', 'Casque de chantier', H, 0xf0c419, 200),
   acc('protest', 'head', 'p-velo', 'Casque de vélo', H, 0x22a7d8, { level: 4 }),
   acc('protest', 'head', 'p-moto', 'Casque de moto', H, 0x151515, 350),
+  fun('protest', 'head', 'p-hautforme', 'Haut-de-forme', A.topHat, 0x161616, 400),
+  acc('protest', 'head', 'p-cowboy', 'Chapeau de cowboy', A.cowboy, 0x8a5a2a, 350),
+  fun('protest', 'head', 'p-sombrero', 'Sombrero', A.sombrero, 0xe2c070, 450),
+  fun('protest', 'head', 'p-fete', 'Chapeau de fête', A.party, 0xff4fa0, { level: 7 }),
+  fun('protest', 'head', 'p-viking', 'Casque viking', A.viking, 0x8c9198, 550),
+  acc('protest', 'head', 'p-afro', 'Perruque afro rose', A.afro, 0xff5fa8, 300),
+  acc('protest', 'head', 'p-crete', 'Crête punk', A.mohawk, 0x3ae07a, 300),
+  fun('protest', 'head', 'p-lapin', 'Oreilles de lapin', A.bunny, 0xf4f4f4, 250),
+  fun('protest', 'head', 'p-helice', 'Casquette à hélice', A.propeller, 0xffd23a, { level: 8 }),
+  fun('protest', 'head', 'p-chef', 'Toque de chef', A.chef, 0xf4f4f4, 300),
+  fun('protest', 'head', 'p-couronne', 'Couronne', A.crown, 0xe8c040, 1200),
+  fun('protest', 'face', 'p-lunettes', 'Lunettes de soleil', A.shades, 0x161616, 150),
+  fun('protest', 'face', 'p-moustache', 'Moustache', A.mustache, 0x3a2410, 120),
+  fun('protest', 'face', 'p-nez', 'Nez de clown', A.clownNose, 0xe8121a, 100),
+  fun('protest', 'face', 'p-coeur', 'Lunettes cœur', A.heartGlasses, 0xff3d8f, { level: 9 }),
   acc('protest', 'back', 'p-sac', 'Sac à dos', PACK, 0x3a5a7a, 100),
   acc('protest', 'back', 'p-drapeau', 'Drapeau rouge', FLAG, 0xc0251c, { level: 3 }),
   acc('protest', 'back', 'p-drapeau-vert', 'Drapeau vert', FLAG, 0x1f6f3a, 250),
+  acc('protest', 'back', 'p-cape', 'Cape de super-héros', A.cape, 0xc8202a, 450),
+  fun('protest', 'back', 'p-ailes', 'Ailes d\'ange', A.wings, 0xf4f4f4, 600),
+  fun('protest', 'back', 'p-canard', 'Bouée canard', A.duck, 0xffd21a, 350),
   gear('protest', 'p-gants', 'Gants en cuir', { hand: 0x5a3a22 }, 120),
   gear('protest', 'p-gants-rouges', 'Gants rouges', { hand: 0xa31a1a }, 200),
   gear('protest', 'p-briquet-or', 'Briquet doré', { lighter: 0xd4a83a }, { level: 5 }),
@@ -46,11 +68,24 @@ export const ITEMS: Item[] = [
   outfit('police', 'c-nuit', 'Tenue de nuit', 0x0b0d12, 0x0b0d12, { level: 2 }),
   outfit('police', 'c-ete', 'Tenue d\'été grise', 0x4a525c, 0x2a3038, 250),
   outfit('police', 'c-kaki', 'Tenue kaki', 0x3b4a32, 0x2f3a28, 350),
+  outfit('police', 'c-rose', 'Uniforme rose bonbon', 0xf06aa8, 0xd85a98, 500),
+  outfit('police', 'c-parade', 'Tenue de parade blanche', 0xeeeeee, 0xe0e0e0, { level: 8 }),
   acc('police', 'head', 'c-blanc', 'Casque blanc', H, 0xe8e8e8, 150),
   acc('police', 'head', 'c-bleu', 'Casque bleu roi', H, 0x2a4fd1, { level: 4 }),
   acc('police', 'head', 'c-or', 'Casque doré', H, 0xc9a13b, 600),
+  fun('police', 'head', 'c-gyrophare', 'Casque gyrophare', A.siren, 0x3a8bff, { level: 7 }),
+  fun('police', 'head', 'c-bicorne', 'Bicorne de Napoléon', A.bicorne, 0x161616, 700),
+  acc('police', 'head', 'c-sherif', 'Chapeau de shérif', A.cowboy, 0xd8c8a0, 400),
+  fun('police', 'head', 'c-hautforme', 'Haut-de-forme', A.topHat, 0x161616, 400),
+  fun('police', 'head', 'c-viking', 'Casque viking', A.viking, 0x8c9198, 550),
+  fun('police', 'head', 'c-couronne', 'Couronne', A.crown, 0xe8c040, 1200),
+  fun('police', 'face', 'c-lunettes', 'Lunettes de soleil', A.shades, 0x161616, 150),
+  fun('police', 'face', 'c-moustache', 'Moustache', A.mustache, 0x3a2410, 120),
+  fun('police', 'face', 'c-nez', 'Nez de clown', A.clownNose, 0xe8121a, 100),
   acc('police', 'back', 'c-fluo', 'Gilet fluo', VEST, 0xc8e01a, 200),
   acc('police', 'back', 'c-gilet-blanc', 'Gilet blanc', VEST, 0xdcdcdc, { level: 6 }),
+  acc('police', 'back', 'c-cape', 'Cape de super-flic', A.cape, 0x1f3a8a, 450),
+  fun('police', 'back', 'c-canard', 'Bouée canard', A.duck, 0xffd21a, 350),
   gear('police', 'c-camo', 'LBD camouflage', { metal: 0x4a5a3a }, 200),
   gear('police', 'c-nuit-lbd', 'LBD bleu nuit', { metal: 0x1d2a55 }, 300),
   gear('police', 'c-or-lbd', 'LBD doré', { metal: 0xb8902e }, { level: 5 }),
@@ -83,20 +118,23 @@ export function toggleEquip(i: Item) {
 /** The look of the local player for a camp (what the others see). */
 export function lookSpec(camp: Camp, tried: Tried = {}): LookSpec {
   const s: LookSpec = { acc: [] };
-  for (const slot of ['outfit', 'head', 'back'] as Slot[]) {
+  for (const slot of ['outfit', 'head', 'face', 'back'] as Slot[]) {
     const l = worn(camp, slot, tried)?.look;
     if (!l) continue;
     if (l.top !== undefined) { s.top = l.top; s.pants = l.pants; }
     if (l.acc) s.acc!.push(...l.acc);
-    if (l.noHair) s.noHair = true;
+    if (l.off?.length) (s.off ??= []).push(...l.off);
   }
+  const hand = gearOf(camp, tried).hand; // gloves show on the body too
+  if (hand !== undefined) s.hands = hand;
   return s;
 }
 /** Shop skins on a body (the avatar on the host, the same body on every client). */
 export function dress(l: BodyLook, s?: LookSpec) {
   if (!s) return;
   if (s.top !== undefined) { l.top.setHex(s.top); l.pants.setHex(s.pants ?? s.top); }
-  if (s.noHair) l.acc_on[ACC.hair] = false;
+  if (s.hands !== undefined) l.hands.setHex(s.hands);
+  for (const a of s.off ?? []) l.acc_on[a] = false;
   for (const [a, c] of s.acc ?? []) { l.acc_on[a] = true; l.acc[a].setHex(c); }
 }
 export const gearOf = (camp: Camp, tried: Tried = {}): Gear => ({ ...worn(camp, 'weapon', tried)?.gear });
