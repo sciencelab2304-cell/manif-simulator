@@ -264,3 +264,12 @@ body.touch #speaker { font-size: 14px; top: 18%; }
   button { padding: 10px 16px; } input { padding: 8px 10px; } .code b { font-size: 32px; } #l-list li { padding: 6px 12px; } h1 { -webkit-text-stroke-width: 4px; }
   .menu-inner { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
 }
+
+/* ---------- menu: language, Play, side ad banners (CrazyGames) */
+.langs { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 6px; }
+.langs button { margin: 0; padding: 6px 12px; font-size: 12px; } .langs button.sel { background: var(--orange); box-shadow: 0 4px 0 var(--orange-d); color: #fff; }
+button.play { display: block; width: 100%; font-size: 30px; padding: 18px; margin: 6px 0 22px; }
+.modes .kicker { width: 100%; font-size: 11px; color: var(--muted); }
+.side-ad { position: fixed; top: 50%; transform: translateY(-50%); width: 300px; height: 600px; max-height: calc(100% - 20px); display: none; z-index: 1; }
+#ad-left { left: 10px; } #ad-right { right: 10px; }
+@media (min-width: 1100px) and (min-height: 600px) { body.ads .side-ad { display: block; width: min(300px, calc((100% - 760px) / 2)); } }

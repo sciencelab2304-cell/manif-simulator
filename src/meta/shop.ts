@@ -1,13 +1,14 @@
 import type { Camp } from '../core/context';
 import { ACC, type BodyLook } from '../npc/body';
 import { save, persist } from './save';
+import { t, tAll } from '../core/i18n';
 
 /**
  * Shop catalogue and loadout: character skins per camp (outfit, head, back), weapon / equipment skins, permanent
  * upgrades in tiers. Items have a price in Pavés d'or, or unlock at a player level (then they are free).
  */
 export type Slot = 'outfit' | 'head' | 'back' | 'weapon';
-export const SLOT_FR: Record<Slot, string> = { outfit: 'Tenues', head: 'Têtes', back: 'Dos', weapon: 'Armes et équipement' };
+export const SLOT_FR: Record<Slot, string> = tAll({ outfit: 'Tenues', head: 'Têtes', back: 'Dos', weapon: 'Armes et équipement' });
 
 /** How a skin changes a body (colours as 0xRRGGBB); sent to the other players so they see it. */
 export interface LookSpec { top?: number; pants?: number; acc?: [number, number][]; noHair?: boolean }
@@ -18,11 +19,11 @@ export interface Item { id: string; camp: Camp; slot: Slot; name: string; price?
 
 const H = ACC.helmet, HAIR = ACC.hair, PACK = ACC.pack, FLAG = ACC.flag, VEST = ACC.vest;
 const outfit = (camp: Camp, id: string, name: string, top: number, pants: number, cost: number | { level: number }): Item =>
-  ({ id, camp, slot: 'outfit', name, look: { top, pants }, swatch: top, ...(typeof cost === 'number' ? { price: cost } : cost) });
+  ({ id, camp, slot: 'outfit', name: t(name), look: { top, pants }, swatch: top, ...(typeof cost === 'number' ? { price: cost } : cost) });
 const acc = (camp: Camp, slot: Slot, id: string, name: string, a: number, color: number, cost: number | { level: number }): Item =>
-  ({ id, camp, slot, name, look: { acc: [[a, color]], noHair: a === H }, swatch: color, ...(typeof cost === 'number' ? { price: cost } : cost) });
+  ({ id, camp, slot, name: t(name), look: { acc: [[a, color]], noHair: a === H }, swatch: color, ...(typeof cost === 'number' ? { price: cost } : cost) });
 const gear = (camp: Camp, id: string, name: string, g: Gear, cost: number | { level: number }): Item =>
-  ({ id, camp, slot: 'weapon', name, gear: g, swatch: g.metal ?? g.hand ?? g.lighter ?? 0, ...(typeof cost === 'number' ? { price: cost } : cost) });
+  ({ id, camp, slot: 'weapon', name: t(name), gear: g, swatch: g.metal ?? g.hand ?? g.lighter ?? 0, ...(typeof cost === 'number' ? { price: cost } : cost) });
 
 export const ITEMS: Item[] = [
   outfit('protest', 'p-kway', 'K-way jaune', 0xe8c21a, 0x2b2f3a, 150),
@@ -108,7 +109,7 @@ export const UPGRADES: Upgrade[] = [
   { id: 'hp', name: 'Vie max', tiers: 5, desc: { protest: '+6 % de vie par palier', police: '+6 % de vie par palier' } },
   { id: 'reload', name: 'Rechargement', tiers: 5, desc: { protest: 'Lancers chargés 8 % plus vite par palier', police: 'LBD rechargé 8 % plus vite par palier' } },
   { id: 'armor', name: 'Résistance', tiers: 5, desc: { protest: '−4 % de dégâts subis par palier', police: '−4 % de dégâts subis par palier' } },
-];
+].map((u) => ({ ...u, name: t(u.name), desc: tAll(u.desc) }));
 export const upgradeCost = (tier: number) => Math.round(120 * 1.7 ** tier); // price of the next tier
 export const MULTI_CAP = 2;
 
@@ -129,11 +130,12 @@ export function tier(id: string) {
 }
 
 // ------------------------------------------------------------------ start bonus (rewarded ad)
-export const BOOSTS: Record<string, { name: string; desc: Record<Camp, string> }> = {
+type Boost = { name: string; desc: Record<Camp, string> };
+export const BOOSTS: Record<string, Boost> = Object.fromEntries(Object.entries<Boost>({
   ammo: { name: 'Munitions', desc: { protest: '+6 pavés et +2 mortiers', police: '+10 balles de LBD' } },
   hp: { name: 'Vie', desc: { protest: '+25 % de vie', police: '+25 % de vie' } },
   grenade: { name: 'Grenade', desc: { protest: '+2 fumigènes et +1 fusée', police: '+2 lacrymos et +1 désencerclement' } },
-};
+}).map(([k, b]) => [k, { name: t(b.name), desc: tAll(b.desc) }]));
 
 /** What upgrades and the waiting start bonus give in this match (the bonus is used up). */
 export function loadout() {

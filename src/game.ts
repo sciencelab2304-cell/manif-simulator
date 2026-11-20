@@ -29,6 +29,8 @@ import { Avatar } from './net/avatar';
 import { Sync } from './net/sync';
 import { act } from './net/actions';
 import { mapById } from './world/maps';
+import { t, tr } from './core/i18n';
+import { gameplay, happytime, videoAd } from './core/platform';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -116,7 +118,7 @@ export class Game {
     ctx.truck = new WaterCannon();
     ctx.crowd = new Crowd();
     // human players: everyone in the lobby, or just you
-    const members = net.multi ? net.members : [{ id: net.me, name: 'Vous', camp, looks: { [camp]: lookSpec(camp) } as Member['looks'] }];
+    const members = net.multi ? net.members : [{ id: net.me, name: t('Vous'), camp, looks: { [camp]: lookSpec(camp) } as Member['looks'] }];
     const spawns = members.map((m) => spawnPoint(m.camp, members.filter((o) => o.camp === m.camp).indexOf(m)));
     this.spawn = spawns[members.findIndex((m) => m.id === net.me)];
     this.arrestGoal = 8 + 5 * Math.max(1, members.filter((m) => m.camp === 'police').length);
@@ -141,8 +143,8 @@ export class Game {
     window.addEventListener('resize', () => this.resize());
     $('keys').innerHTML = (camp === 'police'
       ? ['[G] Charge', '[T] Avancer', '[V] Tenir', '[F] Menotter', '[E] Canon à eau']
-      : ['[I] Slogan', '[E] Ramasser', '[F] Barricade / feu', '[H] Medic', '[M] Masque']).join('<br>');
-    $('controls').innerHTML = CONTROLS[camp].map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('');
+      : ['[I] Slogan', '[E] Ramasser', '[F] Barricade / feu', '[H] Medic', '[M] Masque']).map((k) => t(k)).join('<br>');
+    $('controls').innerHTML = CONTROLS[camp].map(([k, v]) => `<div><kbd>${t(k)}</kbd> ${t(v)}</div>`).join('');
     // warm-up: compile shaders before the first frame
     ctx.sky.update(L.hourAt(0), ctx.player.pos);
     this.renderer.compile(this.scene, this.camera);
@@ -296,7 +298,7 @@ export class Game {
       h.data.holdT = Math.hypot(h.feet.x - L.OBJECTIVE.x, h.feet.z - L.OBJECTIVE.z) < L.OBJECTIVE.r ? was + dt : 0;
       if (!was && h.data.holdT) h.feed(`Tenez la place ${L.HOLD_SECONDS} secondes !`, '#ffb36b');
       if (h.data.holdT >= L.HOLD_SECONDS) {
-        this.finish('protest', `${h.local ? 'Vous avez' : h.name + ' a'} percé la ligne et tenu ${L.map.square}.`);
+        this.finish('protest', ctx.net.multi ? 'Un manifestant a percé la ligne et tenu la place.' : 'Vous avez percé la ligne et tenu la place.');
         return;
       }
       // behind the police line: officers chase the intruder, more of them the closer he gets to the place
@@ -344,26 +346,29 @@ export class Game {
     // world-wide counters come from the host, personal ones stay ours
     if (hostStats) for (const k of ['npcInjured', 'npcSevere', 'arrests', 'windows', 'vehiclesBurnt', 'fires', 'barricades', 'damageEuros', 'evacuated'] as const) ctx.stats[k] = hostStats[k];
     const win = winner === ctx.camp;
+    gameplay(false);
+    if (win) happytime();
+    videoAd('midgame'); // CrazyGames: the natural break between two matches
     setTimeout(() => {
       this.paused = true;
       ctx.input.unlock();
       ctx.hud.hide();
       $('pause').classList.add('hidden');
       const s = ctx.stats;
-      $('end-kicker').textContent = ctx.camp === 'protest' ? 'Manifestant' : 'CRS';
-      $('end-title').textContent = !winner ? 'Partie terminée' : win ? 'Objectif atteint' : 'Échec';
-      $('end-reason').textContent = reason;
+      $('end-kicker').textContent = t(ctx.camp === 'protest' ? 'Manifestant' : 'CRS');
+      $('end-title').textContent = t(!winner ? 'Partie terminée' : win ? 'Objectif atteint' : 'Échec');
+      $('end-reason').textContent = tr(reason);
       const mm = Math.floor(ctx.time / 60), ss = Math.floor(ctx.time % 60).toString().padStart(2, '0');
       const cells: [string, string | number][] = [
         ['Durée', `${mm}:${ss}`], ['Tension finale', `${Math.round(ctx.tension.value)} %`], ['Blessés (PNJ)', s.npcInjured],
         ['Blessés graves', s.npcSevere], ['Interpellations', s.arrests], ['Personnes évacuées', s.evacuated],
-        ['Personnes touchées (vous)', s.peopleHit], ['Coups au but (vous)', `${s.hits} (${s.headHits} à la tête)`],
+        ['Personnes touchées (vous)', s.peopleHit], ['Coups au but (vous)', t`${s.hits} (${s.headHits} à la tête)`],
         ctx.camp === 'police' ? ['Interpellations (vous)', s.myArrests] : ['Objets lancés (vous)', s.thrown],
-        ctx.camp === 'police' ? ['Tirs LBD (vous)', `${s.lbdShots} (${s.lbdHits} touchés)`] : ['Barricades', s.barricades],
+        ctx.camp === 'police' ? ['Tirs LBD (vous)', t`${s.lbdShots} (${s.lbdHits} touchés)`] : ['Barricades', s.barricades],
         ['Vitrines brisées', s.windows], ['Véhicules incendiés', s.vehiclesBurnt], ['Dégâts estimés', `${Math.round(s.damageEuros / 1000)} k€`],
         ['Incendies', s.fires], ['Vos blessures', s.playerWounds], ['Éliminations (vous)', s.takedowns],
       ];
-      $('end-stats').innerHTML = cells.map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+      $('end-stats').innerHTML = cells.map(([k, v]) => `<div><b>${v}</b>${t(k)}</div>`).join('');
       showEndRewards({ camp: ctx.camp, win: winner ? win : null, multi: ctx.net.multi, seconds: ctx.time, survived: s.firstDown || ctx.time,
         takedowns: s.takedowns, hits: s.hits, headHits: s.headHits, arrests: s.myArrests, thrown: s.thrown, downs: s.downs });
       $('end').classList.remove('hidden');

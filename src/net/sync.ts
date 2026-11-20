@@ -9,6 +9,7 @@ import type { Msg } from './net';
 import type { ThrowKind } from '../weapons/projectiles';
 import { angleDiff, clamp } from '../core/util';
 import { canvas } from '../core/textures';
+import { t } from '../core/i18n';
 
 const KINDS: ThrowKind[] = ['pave', 'canette', 'bouteille', 'conserve', 'mortier', 'fusee', 'fumigene', 'gas', 'sting'];
 const MODES = ['hold', 'advance', 'charge', 'regroup'] as const;
@@ -185,7 +186,7 @@ export class Sync {
       else if (type === 'left') {
         this.ready.delete(from);
         if (av) {
-          ctx.hud.feed(`${av.name} a quitté la partie`, '#cfcfcf');
+          ctx.hud.feed(t`${av.name} a quitté la partie`, '#cfcfcf');
           if (ctx.truck.driver === av) ctx.truck.exit(av);
           av.remove();
         }

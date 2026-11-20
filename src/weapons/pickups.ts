@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { ctx } from '../core/context';
 import { defs, type ThrowKind, type Projectile } from './projectiles';
+import { t, tAll } from '../core/i18n';
 
 export type PickKind = ThrowKind | 'panneau' | 'masque' | 'serum';
 
-export const PICK_FR: Record<string, string> = {
+export const PICK_FR: Record<string, string> = tAll({
   pave: 'pavé', canette: 'canette', bouteille: 'bouteille', conserve: 'boîte de conserve', mortier: 'mortier d\'artifice', fusee: 'fusée',
   fumigene: 'fumigène', gas: 'grenade lacrymo (la renvoyer)', sting: 'grenade', panneau: 'panneau (bouclier de fortune)', masque: 'masque à gaz', serum: 'sérum physiologique',
-};
+});
 
 interface Item { kind: PickKind; mesh: THREE.Object3D; pos: THREE.Vector3; active: boolean; respawn: number; home: THREE.Vector3 }
 
@@ -96,7 +97,7 @@ export class Pickups {
       }
       for (const d of ctx.city.paveSpots) {
         const s = score(d, 3);
-        if (s < bs) { bs = s; best = { type: 'dig', pos: d, label: 'dépaver (récupérer des pavés)' }; }
+        if (s < bs) { bs = s; best = { type: 'dig', pos: d, label: t('dépaver (récupérer des pavés)') }; }
       }
     }
     return best;

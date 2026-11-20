@@ -6,6 +6,7 @@ import type { Player } from '../player/player';
 import type { Target } from './pickups';
 import type { DamageInfo } from '../damage/damage';
 import { act } from '../net/actions';
+import { t as tt } from '../core/i18n';
 
 const ORDER: ThrowKind[] = ['pave', 'bouteille', 'conserve', 'canette', 'mortier', 'fusee', 'fumigene', 'gas'];
 const CALM_OK: ThrowKind[] = ['fumigene'];
@@ -53,7 +54,7 @@ export class ProtestKit {
     this.inv[kind] = (this.inv[kind] ?? 0) + n;
     const l = this.list;
     this.sel = Math.max(0, l.indexOf(kind as ThrowKind));
-    ctx.hud.feed(`+${n} ${KIND_FR[kind as ThrowKind] ?? kind}`, '#f2e2b0');
+    ctx.hud.feed(`+${n} ${KIND_FR[kind as ThrowKind] ?? kind}`, '#f2e2b0'); // names already translated
   }
 
   private say(msg: string) { if (this.msgCd <= 0) { ctx.hud.prompt(msg, 2.5); this.msgCd = 2.5; } }
@@ -110,13 +111,13 @@ export class ProtestKit {
         }
         ctx.audio.pickup();
       }
-      ctx.hud.setPrompt(`[E] ${t.type === 'dig' ? 'Maintenir : ' : 'Ramasser : '}${t.label}`);
+      ctx.hud.setPrompt(`[E] ${tt(t.type === 'dig' ? 'Maintenir :' : 'Ramasser :')} ${t.label}`);
     } else {
       this.digT = 0;
       const near = ctx.destruction.propsNear(p.feet, 8).length;
       const burn = ctx.destruction.nearestBurnable(p.feet, 2.5);
       if (ctx.tension.phase >= 1 && near >= 2) ctx.hud.setPrompt('[F] Monter une barricade');
-      else if (ctx.tension.phase >= 1 && burn) ctx.hud.setPrompt(`[F] Mettre le feu (${burn.kind === 'car' ? 'voiture' : burn.kind === 'bin' ? 'poubelle' : burn.kind === 'barricade' ? 'barricade' : 'abribus'})`);
+      else if (ctx.tension.phase >= 1 && burn) ctx.hud.setPrompt(tt('[F] Mettre le feu') + ` (${tt(burn.kind === 'car' ? 'voiture' : burn.kind === 'bin' ? 'poubelle' : burn.kind === 'barricade' ? 'barricade' : 'abribus')})`);
       else ctx.hud.setPrompt('');
     }
 
@@ -170,8 +171,8 @@ export class ProtestKit {
 
   hudInfo() {
     return {
-      slots: this.list.map((k) => ({ name: k === LIGHTER ? 'Briquet' : KIND_FR[k], n: k === LIGHTER ? -1 : this.inv[k], active: k === this.current })),
-      extra: `Sérum ${this.serum} · Masque ${this.p.maskOn ? (this.p.hasGasMask ? 'gaz ✓' : 'FFP2 ✓') : '✗'}${this.panneau ? ' · Panneau ' + Math.max(0, Math.round(this.panneauHp)) : ''}`,
+      slots: this.list.map((k) => ({ name: k === LIGHTER ? tt('Briquet') : KIND_FR[k], n: k === LIGHTER ? -1 : this.inv[k], active: k === this.current })),
+      extra: tt`Sérum ${this.serum} · Masque ${this.p.maskOn ? (this.p.hasGasMask ? tt('gaz ✓') : 'FFP2 ✓') : '✗'}` + (this.panneau ? tt` · Panneau ${Math.max(0, Math.round(this.panneauHp))}` : ''),
     };
   }
 }

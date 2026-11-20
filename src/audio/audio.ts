@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rr, pick, clamp } from '../core/util';
+import { lang, tr } from '../core/i18n';
 
 type Pos = THREE.Vector3 | null;
 
@@ -375,14 +376,14 @@ export class AudioEngine {
     this.muffle.frequency.exponentialRampToValueAtTime(20000, t + seconds);
   }
 
-  /** Police loudspeaker: Web Speech API in French when available. */
+  /** Police loudspeaker: Web Speech API in the game's language when available. */
   say(text: string, opts: { pitch?: number; rate?: number } = {}) {
     try {
       const s = window.speechSynthesis;
       if (!s) return;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'fr-FR';
-      const v = s.getVoices().find((x) => x.lang.startsWith('fr'));
+      const u = new SpeechSynthesisUtterance(tr(text));
+      u.lang = lang === 'fr' ? 'fr-FR' : 'en-GB';
+      const v = s.getVoices().find((x) => x.lang.startsWith(lang));
       if (v) u.voice = v;
       u.pitch = opts.pitch ?? 0.7; u.rate = opts.rate ?? 0.92; u.volume = this.volume;
       s.speak(u);

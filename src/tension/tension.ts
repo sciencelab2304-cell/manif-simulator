@@ -1,7 +1,8 @@
 import { ctx } from '../core/context';
 import { clamp } from '../core/util';
+import { t } from '../core/i18n';
 
-export const PHASE_NAMES = ['Calme', 'Tension', 'Chaos'];
+export const PHASE_NAMES = ['Calme', 'Tension', 'Chaos'].map((p) => t(p));
 const SOMMATIONS = [
   { at: 38, text: 'Police ! Obéissance à la loi. Dispersez-vous.' },
   { at: 46, text: 'Première sommation : on va faire usage de la force.' },

@@ -1,5 +1,6 @@
 import { save, persist, today, thisWeek, type ChallengeState } from './save';
 import type { MatchResult } from './progression';
+import { t } from '../core/i18n';
 
 /**
  * Daily challenges (3, renewed at midnight), weekly ones (3, renewed on Monday) and permanent achievements.
@@ -16,7 +17,8 @@ const metric = (r: MatchResult): Record<Metric, number> => ({
   multi: +r.multi, level: 0,
 });
 
-const DAILY: Challenge[] = [
+const tx = (l: Challenge[]) => l.map((c) => ({ ...c, text: t(c.text) }));
+const DAILY = tx([
   { id: 'd-elim', text: 'Faire 10 éliminations', metric: 'takedowns', goal: 10, reward: 60 },
   { id: 'd-protest', text: 'Jouer 2 parties en manifestant', metric: 'protest', goal: 2, reward: 50 },
   { id: 'd-police', text: 'Jouer 2 parties en CRS', metric: 'police', goal: 2, reward: 50 },
@@ -26,8 +28,8 @@ const DAILY: Challenge[] = [
   { id: 'd-head', text: 'Réussir 5 coups à la tête', metric: 'headHits', goal: 5, reward: 60 },
   { id: 'd-arrest', text: 'Interpeller 3 manifestants', metric: 'arrests', goal: 3, reward: 60 },
   { id: 'd-throw', text: 'Lancer 25 objets', metric: 'thrown', goal: 25, reward: 50 },
-];
-const WEEKLY: Challenge[] = [
+]);
+const WEEKLY = tx([
   { id: 'w-win', text: 'Gagner 5 parties', metric: 'wins', goal: 5, reward: 300 },
   { id: 'w-elim', text: 'Faire 60 éliminations', metric: 'takedowns', goal: 60, reward: 300 },
   { id: 'w-protest', text: 'Jouer 5 parties en manifestant', metric: 'protest', goal: 5, reward: 250 },
@@ -35,8 +37,8 @@ const WEEKLY: Challenge[] = [
   { id: 'w-clean', text: 'Gagner une partie sans être mis à terre', metric: 'noDeathWin', goal: 1, reward: 250 },
   { id: 'w-multi', text: 'Jouer 3 parties en ligne', metric: 'multi', goal: 3, reward: 250 },
   { id: 'w-survive', text: 'Survivre 8 minutes dans une partie', metric: 'survive', goal: 480, reward: 250, best: true },
-];
-export const ACHIEVEMENTS: Challenge[] = [
+]);
+export const ACHIEVEMENTS = tx([
   { id: 'a-first', text: 'Première partie', metric: 'matches', goal: 1, reward: 50 },
   { id: 'a-win', text: 'Première victoire', metric: 'wins', goal: 1, reward: 100 },
   { id: 'a-matches', text: 'Jouer 50 parties', metric: 'matches', goal: 50, reward: 500 },
@@ -47,7 +49,7 @@ export const ACHIEVEMENTS: Challenge[] = [
   { id: 'a-multi', text: '25 parties en ligne', metric: 'multi', goal: 25, reward: 400 },
   { id: 'a-throw', text: '1 000 objets lancés', metric: 'thrown', goal: 1000, reward: 400 },
   { id: 'a-level', text: 'Atteindre le niveau 10', metric: 'level', goal: 10, reward: 500 },
-];
+]);
 const byId = (id: string) => [...DAILY, ...WEEKLY].find((c) => c.id === id)!;
 
 /** Same picks for everyone on a given day/week, different from one period to the next. */

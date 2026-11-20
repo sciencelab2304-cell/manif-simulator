@@ -1,4 +1,5 @@
 import { isTouch } from './device';
+import { store, sdk } from './platform';
 
 export type Quality = 'mobile' | 'low' | 'medium' | 'high';
 
@@ -17,22 +18,20 @@ const KEY = isTouch ? 'manif-settings-touch-v1' : 'manif-settings-v1';
 const OLD_KEY = isTouch ? 'paves-settings-touch-v1' : 'paves-settings-v1'; // before the game was renamed
 
 export function defaultSettings(): Settings {
+  const blood = !sdk; // CrazyGames (PEGI 12 audience): no blood unless the player turns it on
   return isTouch
-    ? { sensitivity: 1, volume: 0.8, quality: 'mobile', blood: true, fov: 80, invertY: false, thirdPerson: false }
-    : { sensitivity: 1, volume: 0.8, quality: 'medium', blood: true, fov: 75, invertY: false, thirdPerson: false };
+    ? { sensitivity: 1, volume: 0.8, quality: 'mobile', blood, fov: 80, invertY: false, thirdPerson: false }
+    : { sensitivity: 1, volume: 0.8, quality: 'medium', blood, fov: 75, invertY: false, thirdPerson: false };
 }
 
 export function loadSettings(): Settings {
   const s = defaultSettings();
-  try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
-    if (raw) Object.assign(s, JSON.parse(raw));
-  } catch { /* storage unavailable */ }
+  try { Object.assign(s, JSON.parse(store.get(KEY) ?? store.get(OLD_KEY) ?? '{}')); } catch { /* damaged */ }
   return s;
 }
 
 export function saveSettings(s: Settings) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ }
+  store.set(KEY, JSON.stringify(s));
 }
 
 export interface QualityProfile {

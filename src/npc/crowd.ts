@@ -9,6 +9,7 @@ import type { DamageInfo } from '../damage/damage';
 import * as L from '../world/layout';
 import { clampWalkable } from '../world/layout';
 import type { ThrowKind } from '../weapons/projectiles';
+import { t } from '../core/i18n';
 
 export type PoliceMode = 'hold' | 'advance' | 'charge' | 'regroup';
 
@@ -51,7 +52,7 @@ export class Crowd {
 
   constructor() {
     this.renderer = new BodyRenderer(ctx.scene, 320, ctx.q.shadows);
-    const tex = signTexture('ZONE INTERDITE · ZONE INTERDITE · ZONE INTERDITE', '#a3121a', '#f4efe6', 1024, 40);
+    const tex = signTexture(t('ZONE INTERDITE · ZONE INTERDITE · ZONE INTERDITE'), '#a3121a', '#f4efe6', 1024, 40);
     this.noGo = new THREE.Mesh(new THREE.PlaneGeometry(L.FACADE_X * 2, 0.8).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }));
     this.noGo.position.y = 0.135;
     this.noGo.receiveShadow = true;

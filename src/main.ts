@@ -11,6 +11,8 @@ import { showLobby } from './ui/lobby';
 import { Net } from './net/net';
 import { initMeta, selectedMap } from './ui/meta';
 import { lookSpec, rules } from './meta/shop';
+import { sdk, store, gameplay, loading, banners, invitedCode, siteMuted, onAdMute } from './core/platform';
+import { t, tr, lang, setLang, type Lang } from './core/i18n';
 
 const $ = (id: string) => document.getElementById(id)!;
 const settings = loadSettings();
@@ -18,6 +20,7 @@ let game: Game | null = null;
 let audio: AudioEngine | null = null;
 const input = new Input(document.body);
 document.body.classList.toggle('touch', isTouch);
+document.body.classList.toggle('ads', !!sdk);
 // no page zoom on phones: double tap (also blocked in CSS) and pinch, which iOS Safari allows despite the viewport tag
 for (const t of ['gesturestart', 'dblclick']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
 let lastTap = 0; // older browsers: a second tap within 300 ms on the game controls is not a zoom (they act on pointerdown)
@@ -32,8 +35,12 @@ const sync = () => {
   settings.sensitivity = +sens.value; settings.volume = +vol.value; settings.fov = +fov.value;
   settings.quality = quality.value as typeof settings.quality; settings.blood = blood.checked; settings.invertY = invert.checked; settings.thirdPerson = third.checked;
   saveSettings(settings);
-  audio?.setVolume(settings.volume);
+  applyVolume();
 };
+// the site's mute setting and video ads silence the game whatever its volume
+let muted = siteMuted((m) => { muted = m; applyVolume(); }), adPlaying = false;
+onAdMute((m) => { adPlaying = m; applyVolume(); });
+function applyVolume() { audio?.setVolume(muted || adPlaying ? 0 : settings.volume); }
 for (const el of [sens, vol, fov, quality, blood, invert, third]) el.addEventListener('input', sync);
 
 // ------------------------------------------------------------------ menu: name, camp, mode
@@ -45,15 +52,24 @@ let camp: Camp = 'protest';
 const pickCamp = (c: Camp) => { camp = c; campButtons.forEach((b) => b.classList.toggle('sel', b.dataset.camp === c)); };
 const redrawMeta = initMeta(() => camp);
 campButtons.forEach((b) => b.addEventListener('click', () => { pickCamp(b.dataset.camp as Camp); redrawMeta(); }));
-try { pseudo.value = localStorage.getItem('manif-name') ?? localStorage.getItem('paves-name') ?? ''; } catch { /* ignore */ }
-codeInput.value = new URLSearchParams(location.search).get('code') ?? '';
-const name = () => { const n = pseudo.value.trim().slice(0, 16) || 'Anonyme'; try { localStorage.setItem('manif-name', n); } catch { /* ignore */ } return n; };
-const busy = (b: boolean, msg = '') => { modeButtons.forEach((x) => (x.disabled = b)); $('loading').textContent = msg; };
+pseudo.value = store.get('manif-name') ?? store.get('paves-name') ?? '';
+codeInput.value = invitedCode() ?? '';
+const name = () => { const n = pseudo.value.trim().slice(0, 16) || t('Anonyme'); store.set('manif-name', n); return n; };
+// language: one click, from the very first screen
+for (const b of document.querySelectorAll<HTMLButtonElement>('[data-lang]')) {
+  b.classList.toggle('sel', b.dataset.lang === lang);
+  b.onclick = () => setLang(b.dataset.lang as Lang);
+}
+/** The side ad banners live on the main menu only. */
+const AD_SLOTS = ['ad-left', 'ad-right'];
+const menuAds = (show: boolean) => banners(show, AD_SLOTS);
+const busy = (b: boolean, msg = '') => { modeButtons.forEach((x) => (x.disabled = b)); $('loading').textContent = tr(msg); };
 
 async function online(how: 'create' | 'join') {
   const code = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = 'Saisissez le code de la partie.'; return; }
+  if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = t('Saisissez le code de la partie.'); return; }
   busy(true, how === 'create' ? 'Création de la partie…' : 'Connexion à la partie…');
+  menuAds(false);
   net.looks = { protest: lookSpec('protest'), police: lookSpec('police') };
   net.options = { map: selectedMap(), balanced: false };
   try {
@@ -63,6 +79,7 @@ async function online(how: 'create' | 'join') {
   } catch (e) {
     net.leave();
     busy(false, (e as Error).message || 'Connexion impossible.');
+    menuAds(true);
   }
 }
 modeButtons[0].addEventListener('click', () => start(camp));
@@ -77,6 +94,7 @@ net.onClosed = (why) => {
   $('lobby').classList.add('hidden');
   $('menu').classList.remove('hidden');
   busy(false, why);
+  menuAds(true);
 };
 
 function start(c: Camp) {
@@ -87,27 +105,29 @@ function start(c: Camp) {
   rules.balanced = net.multi && net.options.balanced;
   const map = net.multi ? net.options.map : selectedMap();
   audio = audio ?? new AudioEngine();
-  audio.setVolume(settings.volume);
+  applyVolume();
   audio.resume();
-  if (isTouch) enterFullscreen(); else input.lock();
+  if (isTouch) { if (!sdk) enterFullscreen(); } else input.lock(); // CrazyGames has its own fullscreen button
   busy(true, 'Construction de Valbrune… (quelques secondes)');
+  menuAds(false);
   $('lobby').classList.add('hidden');
   $('menu').classList.remove('hidden');
   // multiplayer: the menus lead back to the main menu, and the match keeps running behind the pause screen
   $('pause-net').classList.toggle('hidden', !net.multi);
   $('restart').classList.toggle('hidden', net.multi);
   $('switch').classList.toggle('hidden', net.multi);
-  $('again').textContent = net.multi ? 'Menu principal' : 'Rejouer';
+  $('again').textContent = net.multi ? t('Menu principal') : t('Rejouer');
   // let the browser paint the message before the heavy city generation
   setTimeout(() => {
     try {
       game = new Game(c, settings, input, audio!, net, map);
       $('menu').classList.add('hidden');
       game.start();
+      gameplay(true);
       if (isTouch) new TouchControls(input, c, () => setPaused(true));
       else if (!input.locked) setPaused(true);
     } catch (e) {
-      $('loading').textContent = 'Erreur : ' + (e as Error).message;
+      $('loading').textContent = t('Erreur : ') + (e as Error).message;
       console.error(e);
     }
   }, 60);
@@ -117,12 +137,13 @@ function start(c: Camp) {
 function setPaused(p: boolean) {
   if (!game || ctx.over) return;
   game.setPaused(p);
+  gameplay(!p);
   $('pause').classList.toggle('hidden', !p);
   if (p) input.reset();
 }
 input.onLockChange = (locked) => setPaused(!locked);
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
-$('resume').addEventListener('click', () => { if (isTouch) { enterFullscreen(); setPaused(false); } else input.lock(); });
+$('resume').addEventListener('click', () => { if (isTouch) { if (!sdk) enterFullscreen(); setPaused(false); } else input.lock(); });
 $('app').addEventListener('click', () => { if (game && !ctx.over && !isTouch && !input.locked) input.lock(); });
 const restart = (c: Camp | null) => {
   net.leave();
@@ -138,10 +159,12 @@ window.addEventListener('pagehide', () => net.leave());
 
 // ------------------------------------------------------------------ boot
 initRapier().then(() => {
-  busy(false, 'Choisissez votre camp, puis jouez seul ou à plusieurs.');
+  busy(false, 'Choisissez votre camp, puis appuyez sur Jouer.');
+  loading(false);
+  menuAds(true);
   let auto: string | null = null;
   try { auto = sessionStorage.getItem('manif-autostart'); sessionStorage.removeItem('manif-autostart'); } catch { /* ignore */ }
   if (auto === 'protest' || auto === 'police') pickCamp(auto);
-}).catch((e) => { $('loading').textContent = 'Erreur de chargement : ' + e; });
+}).catch((e) => { $('loading').textContent = t('Erreur de chargement : ') + e; });
 
 (window as any).__manif = ctx;

@@ -1,19 +1,12 @@
 import type { Camp } from '../core/context';
 import type { Net } from '../net/net';
-import { mapCards, unlocked } from './meta';
+import { mapCards, unlocked, CAMP_NAME } from './meta';
 import { mapById } from '../world/maps';
+import { inviteLink } from '../core/platform';
+import { t, tr } from '../core/i18n';
 
 const $ = (id: string) => document.getElementById(id)!;
-const CAMP_FR: Record<Camp, string> = { protest: 'Manifestant', police: 'CRS' };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-
-/** Link that opens the menu with the code already filled in (the signalling server option is kept). */
-export function inviteLink(code: string) {
-  const u = new URL(location.href);
-  u.hash = '';
-  u.searchParams.set('code', code);
-  return u.toString();
-}
 
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); return true; } catch { /* insecure context: fall back */ }
@@ -26,7 +19,7 @@ async function copy(text: string) {
 
 /** Waiting room: code to share, players and their camps, ready flags; the host launches the match. */
 export function showLobby(net: Net, launch: (camp: Camp) => void) {
-  const status = (t: string) => ($('l-status').textContent = t);
+  const status = (s: string) => ($('l-status').textContent = tr(s));
   const mine = () => net.members.find((m) => m.id === net.me);
   $('menu').classList.add('hidden');
   $('lobby').classList.remove('hidden');
@@ -35,15 +28,15 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
   $('l-ready').classList.toggle('hidden', net.isHost);
 
   const render = () => {
-    $('l-list').innerHTML = net.members.map((m, i) => `<li><span class="n">${esc(m.name)}${m.id === net.me ? '<i>vous</i>' : ''}${i === 0 ? '<i>hôte</i>' : ''}</span>`
-      + `<span class="c ${m.camp}">${CAMP_FR[m.camp]}</span><span class="r ${m.ready ? 'ok' : ''}">${m.ready ? '✓ prêt' : 'pas prêt'}</span></li>`).join('');
+    $('l-list').innerHTML = net.members.map((m, i) => `<li><span class="n">${esc(m.name)}${m.id === net.me ? `<i>${t('vous')}</i>` : ''}${i === 0 ? `<i>${t('hôte')}</i>` : ''}</span>`
+      + `<span class="c ${m.camp}">${CAMP_NAME[m.camp]}</span><span class="r ${m.ready ? 'ok' : ''}">${t(m.ready ? '✓ prêt' : 'pas prêt')}</span></li>`).join('');
     // match options: the host chooses, the others see them
     const o = net.options;
     $('l-options').innerHTML = net.isHost
-      ? `<div class="maps">${mapCards(o.map, true)}</div><label class="chk"><input type="checkbox" id="l-balanced" ${o.balanced ? 'checked' : ''}> Partie équilibrée : sans améliorations ni bonus achetés</label>`
-      : `<p class="sub">Carte : <b>${mapById(o.map).name}</b>${o.balanced ? ' · partie équilibrée (sans améliorations)' : ' · améliorations plafonnées'}</p>`;
+      ? `<div class="maps">${mapCards(o.map, true)}</div><label class="chk"><input type="checkbox" id="l-balanced" ${o.balanced ? 'checked' : ''}> ${t('Partie équilibrée : sans améliorations ni bonus achetés')}</label>`
+      : `<p class="sub">${t`Carte : <b>${mapById(o.map).name}</b>`}${t(o.balanced ? ' · partie équilibrée (sans améliorations)' : ' · améliorations plafonnées')}</p>`;
     const me = mine();
-    $('l-ready').textContent = me?.ready ? 'Pas prêt' : 'Prêt';
+    $('l-ready').textContent = t(me?.ready ? 'Pas prêt' : 'Prêt');
     ($('l-start') as HTMLButtonElement).disabled = !net.allReady;
     status(net.isHost
       ? net.members.length < 2 ? 'En attente de joueurs… Gardez cette page ouverte à l\'écran pendant qu\'ils rejoignent.' : net.allReady ? 'Tout le monde est prêt.' : 'En attente que tout le monde soit prêt…'
@@ -61,7 +54,7 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
   $('l-copy').onclick = async () => status(await copy(net.code) ? 'Code copié.' : 'Copie impossible : notez le code.');
   $('l-share').onclick = async () => {
     const url = inviteLink(net.code);
-    if (navigator.share) { try { await navigator.share({ title: 'Manif Simulator', text: `Rejoins ma partie de Manif Simulator : code ${net.code}`, url }); } catch { /* cancelled */ } }
+    if (navigator.share) { try { await navigator.share({ title: 'Manif Simulator', text: t`Rejoins ma partie de Manif Simulator : code ${net.code}`, url }); } catch { /* cancelled */ } }
     else status(await copy(url) ? 'Lien d\'invitation copié.' : url);
   };
   $('l-ready').onclick = () => net.set('ready', !mine()?.ready);

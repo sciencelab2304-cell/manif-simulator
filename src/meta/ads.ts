@@ -1,8 +1,10 @@
 import { save, persist, today } from './save';
+import { sdk, videoAd, adBlocked } from '../core/platform';
+import { t } from '../core/i18n';
 
 /**
- * Rewarded ads. The game only calls `showRewardedAd`; what shows the ad is the provider, a simulation for now.
- * To plug a real web ad network, write a provider and pass it to `setAdProvider` (nothing else changes). Example with
+ * Rewarded ads. The game only calls `showRewardedAd`; what shows the ad is the provider: CrazyGames' video ads on
+ * their site, a simulation elsewhere. Another web ad network plugs in the same way with `setAdProvider`. Example with
  * Google H5 Games Ads (Ad Placement API), once its script tag is in index.html:
  *
  *   setAdProvider((done) => adBreak({
@@ -19,6 +21,7 @@ export const ADS_PER_DAY = 5;
 const AD_SECONDS = 15;
 
 export function adsLeft() {
+  if (adBlocked) return 0;
   return save.ads.day === today() ? Math.max(0, ADS_PER_DAY - save.ads.n) : ADS_PER_DAY;
 }
 
@@ -26,9 +29,9 @@ export function adsLeft() {
 const simulated: AdProvider = (done) => {
   const el = document.createElement('div');
   el.id = 'ad';
-  el.innerHTML = `<div class="ad-tag">Publicité</div>
-    <div class="ad-body"><div class="ad-logo">☕</div><b>Café de la Concorde-Neuve</b><span>Le meilleur crème de Valbrune, depuis 1923.</span><small>(publicité simulée : un vrai réseau de pubs la remplacera)</small></div>
-    <div class="ad-count"></div><button class="ad-close hidden">Fermer</button>`;
+  el.innerHTML = `<div class="ad-tag">${t('Publicité')}</div>
+    <div class="ad-body"><div class="ad-logo">☕</div><b>Café de la Concorde-Neuve</b><span>${t('Le meilleur crème de Valbrune, depuis 1923.')}</span><small>${t('(publicité simulée : un vrai réseau de pubs la remplacera)')}</small></div>
+    <div class="ad-count"></div><button class="ad-close hidden">${t('Fermer')}</button>`;
   document.body.appendChild(el);
   const count = el.querySelector('.ad-count')!, close = el.querySelector('.ad-close')!;
   let left = AD_SECONDS, last = performance.now();
@@ -36,9 +39,9 @@ const simulated: AdProvider = (done) => {
     const now = performance.now();
     if (!document.hidden) left -= (now - last) / 1000; // a hidden page is not watching
     last = now;
-    if (left > 0) { count.textContent = `Récompense dans ${Math.ceil(left)} s`; return; }
+    if (left > 0) { count.textContent = t`Récompense dans ${Math.ceil(left)} s`; return; }
     clearInterval(iv);
-    count.textContent = 'Récompense obtenue !';
+    count.textContent = t('Récompense obtenue !');
     close.classList.remove('hidden');
   };
   const iv = window.setInterval(tick, 200);
@@ -46,7 +49,7 @@ const simulated: AdProvider = (done) => {
   close.addEventListener('click', () => { el.remove(); done(true); });
 };
 
-let provider: AdProvider = simulated;
+let provider: AdProvider = sdk ? (done) => videoAd('rewarded', done) : simulated;
 export const setAdProvider = (p: AdProvider) => { provider = p; };
 
 /** Shows a rewarded ad if today's quota allows it; `onReward` runs only when it was watched to the end. */

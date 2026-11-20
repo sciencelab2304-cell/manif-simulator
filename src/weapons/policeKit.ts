@@ -5,9 +5,10 @@ import type { Player } from '../player/player';
 import { CUFF_HP, type NPC } from '../npc/npc';
 import type { DamageInfo, Zone } from '../damage/damage';
 import { act } from '../net/actions';
+import { t, tAll } from '../core/i18n';
 
 type Weapon = 'lbd' | 'gas' | 'sting' | 'baton';
-const NAMES: Record<Weapon, string> = { lbd: 'LBD 40', gas: 'Lacrymo', sting: 'Désencerclement', baton: 'Matraque' };
+const NAMES = tAll<Weapon>({ lbd: 'LBD 40', gas: 'Lacrymo', sting: 'Désencerclement', baton: 'Matraque' });
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 const CUFF_SECONDS = 2;
@@ -214,7 +215,7 @@ export class PoliceKit {
     const ammo = w === 'lbd' ? `${this.chamber}/${this.ammo}` : w === 'gas' ? `${this.gas}` : w === 'sting' ? `${this.sting}` : '—';
     return {
       slots: this.weapons.map((k) => ({ name: NAMES[k], n: k === 'lbd' ? this.chamber + this.ammo : k === 'gas' ? this.gas : k === 'sting' ? this.sting : -1, active: k === w })),
-      extra: `${NAMES[w]} : ${ammo} · Trousse ${this.medkits} · Masque ${this.p.maskOn ? '✓' : '✗'}`,
+      extra: `${NAMES[w]} : ${ammo} · ` + t`Trousse ${this.medkits} · Masque ${this.p.maskOn ? '✓' : '✗'}`,
     };
   }
 }

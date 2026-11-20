@@ -6,6 +6,7 @@ import type { NPC } from '../npc/npc';
 import type { DamageType } from '../damage/damage';
 import { groundY } from '../world/city';
 import type { GasCloud } from './gas';
+import { tAll } from '../core/i18n';
 
 export type ThrowKind = 'pave' | 'canette' | 'bouteille' | 'conserve' | 'mortier' | 'fusee' | 'fumigene' | 'gas' | 'sting';
 
@@ -19,10 +20,10 @@ interface Def {
   sound: 'stone' | 'metal' | 'glass' | 'can' | 'wood';
 }
 
-export const KIND_FR: Record<ThrowKind, string> = {
+export const KIND_FR = tAll<ThrowKind>({
   pave: 'Pavé', canette: 'Canette', bouteille: 'Bouteille', conserve: 'Conserve', mortier: 'Mortier', fusee: 'Fusée',
   fumigene: 'Fumigène', gas: 'Grenade lacrymo', sting: 'Désencerclement',
-};
+});
 
 let DEFS: Record<ThrowKind, Def> | null = null;
 export function defs() {

@@ -1,5 +1,6 @@
 import type { Input } from '../core/input';
 import { ctx, type Camp } from '../core/context';
+import { t } from '../core/i18n';
 
 /**
  * Touch overlay for phones/tablets. It only drives the shared Input state: a floating joystick on the left,
@@ -11,12 +12,12 @@ type Act = { key?: string; btn?: number; look?: boolean; toggle?: boolean; fn?: 
 type Btn = [label: string, act: Act];
 
 const RING: Record<Camp, Btn[]> = { // inner arc first (3 buttons), then the outer arc
-  protest: [['Cloche', { btn: 2, look: true }], ['Ramas.', { key: 'KeyE' }]],
-  police: [['Viser', { btn: 2, toggle: true }], ['Rech.', { key: 'KeyR' }], ['Menotter', { key: 'KeyF' }], ['Canon', { key: 'KeyE' }], ['CHARGE', { key: 'KeyG' }]],
+  protest: [[t('Cloche'), { btn: 2, look: true }], [t('Ramas.'), { key: 'KeyE' }]],
+  police: [[t('Viser'), { btn: 2, toggle: true }], [t('Rech.'), { key: 'KeyR' }], [t('Menotter'), { key: 'KeyF' }], [t('Canon'), { key: 'KeyE' }], [t('CHARGE'), { key: 'KeyG' }]],
 };
 const PILLS: Record<Camp, Btn[]> = {
-  protest: [['Masque', { key: 'KeyM' }], ['Sérum', { key: 'KeyK' }], ['Panneau', { key: 'KeyX' }], ['Medic', { key: 'KeyH' }]],
-  police: [['Avancer', { key: 'KeyT' }], ['Tenir', { key: 'KeyV' }], ['Masque', { key: 'KeyM' }], ['Soins', { key: 'KeyH' }]],
+  protest: [[t('Masque'), { key: 'KeyM' }], [t('Sérum'), { key: 'KeyK' }], [t('Panneau'), { key: 'KeyX' }], [t('Medic'), { key: 'KeyH' }]],
+  police: [[t('Avancer'), { key: 'KeyT' }], [t('Tenir'), { key: 'KeyV' }], [t('Masque'), { key: 'KeyM' }], [t('Soins'), { key: 'KeyH' }]],
 };
 const LOOK_GAIN = 2.2; // touch pixels feel smaller than mouse counts
 const STICK_R = 56;
@@ -34,7 +35,7 @@ export class TouchControls {
     this.base.appendChild(this.knob);
     const ring = document.createElement('div'); ring.className = 'ring';
     const pills = document.createElement('div'); pills.className = 'pills';
-    ring.appendChild(this.button('FEU', { btn: 0, look: true }, 'fire'));
+    ring.appendChild(this.button(t('FEU'), { btn: 0, look: true }, 'fire'));
     const outer = RING[camp].length - 3;
     RING[camp].forEach(([l, a], i) => {
       const b = this.button(l, a);
@@ -49,7 +50,7 @@ export class TouchControls {
     this.root.append(this.base, ring, pills);
     document.getElementById('hud')!.appendChild(this.root);
     this.home();
-    const names = new Map([['Briquet', { key: 'KeyF' }] as Btn, ...RING[camp], ...PILLS[camp]].filter(([, a]) => a.key).map(([l, a]) => [a.key!.slice(3), l]));
+    const names = new Map([[t('Briquet'), { key: 'KeyF' }] as Btn, ...RING[camp], ...PILLS[camp]].filter(([, a]) => a.key).map(([l, a]) => [a.key!.slice(3), l]));
     ctx.hud.hint = (t) => t.replace(/\[([A-Z])\]/g, (m, k) => names.has(k) ? `[${names.get(k)}]` : m);
 
     // empty screen: left side = joystick, right side = look

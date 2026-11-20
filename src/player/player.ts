@@ -10,6 +10,7 @@ import { groundY } from '../world/city';
 import { ProtestKit } from '../weapons/protestKit';
 import { PoliceKit } from '../weapons/policeKit';
 import { loadout, gearOf, lookSpec, type Loadout } from '../meta/shop';
+import { t } from '../core/i18n';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _eye = new THREE.Vector3();
 const SHOULDER = new THREE.Vector3(0.45, 0.35, 2.8); // third-person camera, in view space
@@ -113,10 +114,10 @@ export class Player {
     if (d.type !== 'gas' && amt > 4) {
       ctx.particles.bloodSpray(d.point, d.dir, clamp(amt / 30, 0.3, 1));
       let extra = '';
-      if (this.wounds.eye && d.zone === 'head' && d.type === 'lbd') extra = ' · Œil touché !';
-      else if (this.wounds.jaw && d.zone === 'head' && d.type === 'lbd') extra = ' · Mâchoire fracturée';
-      else if (d.zone.startsWith('leg') && this.wounds.limp > 0.5) extra = ' · vous boitez';
-      ctx.hud.feed(`Blessé : ${ZONE_FR[d.zone]} (−${Math.round(amt)} PV)${extra}`, '#ff6a5a');
+      if (this.wounds.eye && d.zone === 'head' && d.type === 'lbd') extra = t(' · Œil touché !');
+      else if (this.wounds.jaw && d.zone === 'head' && d.type === 'lbd') extra = t(' · Mâchoire fracturée');
+      else if (d.zone.startsWith('leg') && this.wounds.limp > 0.5) extra = t(' · vous boitez');
+      ctx.hud.feed(t`Blessé : ${ZONE_FR[d.zone]} (−${Math.round(amt)} PV)` + extra, '#ff6a5a');
     }
     // after-effects by weapon
     const flat = _v.copy(d.dir).setY(0).normalize();
@@ -207,8 +208,8 @@ export class Player {
     else if (h.down) s.takedowns++;
     if (ctx.camp === 'protest' && h.role === 'crs') this.aggro += 1.5;
     if (own || h.zone === 'head') {
-      const who = h.role === 'crs' ? 'CRS' : h.role === 'journalist' ? 'journaliste' : h.role === 'medic' ? 'street medic' : h.role === 'firefighter' ? 'pompier' : 'manifestant';
-      ctx.hud.feed(`${own ? 'Attention, ' : ''}touché : ${who} (${ZONE_SHORT[h.zone]})${h.eye ? ' · œil' : h.jaw ? ' · mâchoire' : ''}`, own ? '#ff8a6a' : '#f2e2b0');
+      const who = t(h.role === 'crs' ? 'CRS' : h.role === 'journalist' ? 'journaliste' : h.role === 'medic' ? 'street medic' : h.role === 'firefighter' ? 'pompier' : 'manifestant');
+      ctx.hud.feed((own ? t('Attention, touché :') : t('Touché :')) + ` ${who} (${ZONE_SHORT[h.zone]})` + (h.eye ? t(' · œil') : h.jaw ? t(' · mâchoire') : ''), own ? '#ff8a6a' : '#f2e2b0');
     }
   }
 

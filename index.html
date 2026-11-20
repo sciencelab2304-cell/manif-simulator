@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#12142a" />
   <title>Manif Simulator — Valbrune</title>
+  <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" />
@@ -49,7 +50,9 @@
   </div>
 
   <div id="menu" class="screen">
+    <div id="ad-left" class="side-ad"></div><div id="ad-right" class="side-ad"></div>
     <div class="menu-inner">
+      <div class="langs"><button class="ghost" data-lang="en">English</button><button class="ghost" data-lang="fr">Français</button></div>
       <div id="meta-bar">
         <div class="mb-coins"><i class="coin"></i><b id="mb-coins">0</b><span>Pavés d'or</span></div>
         <div class="mb-level">Niv. <b id="mb-level">1</b><div class="xpbar"><div id="mb-xp"></div></div><span id="mb-xpt"></span></div>
@@ -58,7 +61,7 @@
       <div class="kicker">Valbrune · fiction</div>
       <h1>MANIF<br>SIMULATOR</h1>
       <p class="sub">Le cortège descend vers la place, la ligne de CRS l'attend. Pour l'instant, tout est calme.</p>
-      <div class="pegi">18+ · violence réaliste, sang</div>
+      <div class="pegi">Violence · sang désactivable dans les réglages</div>
       <label class="pseudo">Pseudo <input id="pseudo" maxlength="16" placeholder="Anonyme" autocomplete="nickname"></label>
       <div class="camps">
         <button class="camp sel" data-camp="protest">
@@ -70,10 +73,11 @@
           <div class="cd">Casque, bouclier, armure. LBD, lacrymo, désencerclement, matraque, charge en groupe, canon à eau. Objectif : tenir la place.</div>
         </button>
       </div>
-      <div id="boost-line" class="hidden"></div>
       <div id="maps"></div>
+      <div id="boost-line" class="hidden"></div>
+      <button id="m-solo" class="play" disabled>Jouer</button>
       <div class="modes">
-        <button id="m-solo" disabled>Solo</button>
+        <span class="kicker">Avec des amis</span>
         <button id="m-create" class="ghost" disabled>Créer une partie</button>
         <span class="join"><input id="m-code" maxlength="8" placeholder="CODE" autocomplete="off" spellcheck="false"><button id="m-join" class="ghost" disabled>Rejoindre une partie</button></span>
       </div>

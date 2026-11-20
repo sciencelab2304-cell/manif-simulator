@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import type { Camp, Human } from '../core/context';
+import { tAll } from '../core/i18n';
 
 export type Zone = 'head' | 'torso' | 'armL' | 'armR' | 'legL' | 'legR';
 export const ZONES: Zone[] = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
-export const ZONE_FR: Record<Zone, string> = { head: 'tête', torso: 'torse', armL: 'bras gauche', armR: 'bras droit', legL: 'jambe gauche', legR: 'jambe droite' };
+export const ZONE_FR = tAll<Zone>({ head: 'tête', torso: 'torse', armL: 'bras gauche', armR: 'bras droit', legL: 'jambe gauche', legR: 'jambe droite' });
 
-export const ZONE_SHORT: Record<Zone, string> = { head: 'tête', torso: 'torse', armL: 'bras', armR: 'bras', legL: 'jambe', legR: 'jambe' };
+export const ZONE_SHORT = tAll<Zone>({ head: 'tête', torso: 'torse', armL: 'bras', armR: 'bras', legL: 'jambe', legR: 'jambe' });
 
 export type DamageType = 'blunt' | 'glass' | 'lbd' | 'blast' | 'baton' | 'water' | 'trample' | 'fire' | 'gas';
 

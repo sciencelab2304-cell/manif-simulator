@@ -1,5 +1,7 @@
+import { store } from '../core/platform';
+
 /**
- * Everything the player keeps between matches, in one localStorage entry: Pavés d'or, XP, level, skins, upgrades,
+ * Everything the player keeps between matches, in one stored entry (CrazyGames cloud save there, localStorage elsewhere): Pavés d'or, XP, level, skins, upgrades,
  * challenges, rewarded ads of the day and the start bonus waiting for the next match.
  */
 export interface ChallengeState { id: string; progress: number; claimed: boolean }
@@ -29,7 +31,7 @@ const fresh = (): Save => ({
 
 function load(): Save {
   const s = fresh();
-  try { const raw = localStorage.getItem(KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch { /* storage unavailable */ }
+  try { Object.assign(s, JSON.parse(store.get(KEY) ?? '{}')); } catch { /* damaged */ }
   return s;
 }
 
@@ -40,7 +42,7 @@ const listeners: (() => void)[] = [];
 export const onSave = (fn: () => void) => listeners.push(fn);
 
 export function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify(save)); } catch { /* ignore */ }
+  store.set(KEY, JSON.stringify(save));
   for (const f of listeners) f();
 }
 
