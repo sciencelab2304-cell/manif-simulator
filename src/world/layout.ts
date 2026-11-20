@@ -20,6 +20,7 @@ export const BREACH_STEP = 17; // the line falls back this far when the proteste
 export const VAN_Z = -166;
 export const TRUCK_Z = -180;
 export const OBJECTIVE = { x: 0, z: -228, r: 18 }; // protester goal on the place
+export const HOLD_SECONDS = 6; // a protester player must stay that long on it to win
 export const EVAC_PROTEST = { x: 0, z: 46 };
 export const EVAC_POLICE = { x: 4, z: -196 };
 export const MATCH_SECONDS = 600; // police must hold for 10 minutes

@@ -255,7 +255,7 @@ export class Game {
       fire, sirens: ctx.city.vans, sirensOn: ctx.tension.phase === 2, lowHp: clamp(1 - ctx.player.hp / (ctx.player.maxHp * 0.4), 0, 1),
     });
     ctx.hud.update(dt);
-    if (!ctx.net.isClient) this.objectives();
+    if (!ctx.net.isClient) this.objectives(dt);
     ctx.post.render(dt);
     inp.endFrame();
   }
@@ -284,17 +284,22 @@ export class Game {
   }
 
   /** Host / solo: win conditions. */
-  private objectives() {
+  private objectives(dt: number) {
     if (ctx.over) return;
     const P = ctx.crowd.police;
     for (const h of ctx.crowd.alive('protest') as Avatar[]) {
-      if (Math.hypot(h.feet.x - L.OBJECTIVE.x, h.feet.z - L.OBJECTIVE.z) < L.OBJECTIVE.r) {
-        this.finish('protest', `${h.local ? 'Vous avez' : h.name + ' a'} percé la ligne et atteint la place de la Concorde-Neuve.`);
+      // the place must be held, not just touched: running there alone is not enough
+      const was = h.data.holdT ?? 0;
+      h.data.holdT = Math.hypot(h.feet.x - L.OBJECTIVE.x, h.feet.z - L.OBJECTIVE.z) < L.OBJECTIVE.r ? was + dt : 0;
+      if (!was && h.data.holdT) h.feed(`Tenez la place ${L.HOLD_SECONDS} secondes !`, '#ffb36b');
+      if (h.data.holdT >= L.HOLD_SECONDS) {
+        this.finish('protest', `${h.local ? 'Vous avez' : h.name + ' a'} percé la ligne et tenu la place de la Concorde-Neuve.`);
         return;
       }
-      // sneaking behind the police line: the closest officers try to catch the intruder
-      if (h.feet.z < P.lineZ - 1 && ctx.crowd.all.filter((n) => n.role === 'crs' && n.data.hunt && n.standing).length < 3) {
-        const n = ctx.crowd.nearest(h.feet, 30, (o) => o.role === 'crs' && o.standing && !o.data.hunt && o.state === 'line');
+      // behind the police line: officers chase the intruder, more of them the closer he gets to the place
+      const hunters = ctx.crowd.all.filter((n) => n.role === 'crs' && n.data.hunt === h && n.standing).length;
+      if (h.feet.z < P.lineZ - 1 && hunters < 3 + 5 * ctx.crowd.depth(h.feet.z)) {
+        const n = ctx.crowd.nearest(h.feet, 45, (o) => o.role === 'crs' && o.standing && !o.data.hunt && o.state === 'line');
         if (n) { n.setState('charge'); n.data.hunt = h; }
       }
     }

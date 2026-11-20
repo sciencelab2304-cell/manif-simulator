@@ -115,6 +115,12 @@ export class Crowd {
     for (const x of [-8, -1, 6]) this.spawnCrs(x, 1, 'lbd');
     for (const x of [-4.5, 2.5, 9.5]) this.spawnCrs(x, 1, 'grenade');
     for (const x of [-11, 11]) this.spawnCrs(x, 1, 'shield');
+    // reserve guarding the place, for the protesters who slip past the line
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, n = this.spawnCrs(Math.cos(a) * 12, 0, 'shield');
+      n.slot.z = L.OBJECTIVE.z + Math.sin(a) * 12; n.data.guard = true;
+      n.pos.z = n.slot.z;
+    }
     // firefighters, one team behind the police, one at the back of the march
     for (let i = 0; i < 2; i++) this.spawnFire(new THREE.Vector3(L.EVAC_POLICE.x + i * 1.5, 0, L.EVAC_POLICE.z), 'police');
     for (let i = 0; i < 2; i++) this.spawnFire(new THREE.Vector3(-3 + i * 1.5, 0, L.EVAC_PROTEST.z - 1), 'north');
@@ -231,7 +237,7 @@ export class Crowd {
       P.push = Math.max(0, P.push - 35);
       ctx.tension.add(6, 'charge');
       ctx.audio.say('En avant ! Chargez !', { pitch: 0.9, rate: 1.1 });
-      for (const n of this.all) if (n.role === 'crs' && n.weapon === 'shield' && n.standing && n.state === 'line') { n.setState('charge'); n.data.target = null; }
+      for (const n of this.all) if (n.role === 'crs' && n.weapon === 'shield' && n.standing && n.state === 'line' && !n.data.guard) { n.setState('charge'); n.data.target = null; }
     }
     if (mode === 'advance') ctx.tension.add(2, 'avancée');
   }
@@ -665,7 +671,7 @@ export class Crowd {
       }
       const prey: Human | null = n.data.hunt;
       if (prey?.alive) {
-        n.target.copy(prey.feet).setY(0); n.speed = 5.4;
+        n.target.copy(prey.feet).setY(0); n.speed = 5.4 + 2.6 * this.depth(prey.feet.z); // faster than a sprint on the place
         if (prey.feet.distanceTo(n.pos) < 1.4 && n.strikeT <= 0) { n.strikeT = 0.45; setTimeout(() => this.crsStrike(n, prey), 220); }
         return;
       }
@@ -681,7 +687,7 @@ export class Crowd {
     // line holding
     n.setState('line');
     n.data.hunt = null;
-    n.target.set(n.slot.x, 0, P.lineZ - n.slot.row * 2.5);
+    n.target.set(n.slot.x, 0, n.data.guard ? n.slot.z : P.lineZ - n.slot.row * 2.5);
     n.speed = P.mode === 'regroup' ? 2.5 : 1.6;
     n.faceYaw = 0;
     // ranged weapons
@@ -773,6 +779,9 @@ export class Crowd {
     t.takeHit({ amount: rr(14, 24), zone, type: 'baton', dir, point: pos.clone().setY(pos.y + (zone === 'head' ? 1.65 : 1.1)), force: chance(0.55) ? 6 : 2.5, fromCamp: 'police' });
     if (t instanceof NPC && !t.standing && chance(0.35)) { n.setState('arrest'); n.data.target = t; n.data.arrestT = 0; }
   }
+
+  /** How deep a point is behind the police line: 0 on the line, 1 at the edge of the place's objective. */
+  depth(z: number) { return clamp((this.police.lineZ - z) / (this.police.lineZ - L.OBJECTIVE.z - L.OBJECTIVE.r), 0, 1); }
 
   /** Closest living human of a camp within r (optionally only the aggressive ones). */
   closestHuman(camp: Camp, pos: THREE.Vector3, r: number, minAggro = -1): Human | null {

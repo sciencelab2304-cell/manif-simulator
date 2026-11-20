@@ -95,6 +95,8 @@ export class Player {
       if (this.kit instanceof ProtestKit) this.kit.panneauHp -= d.amount;
       return;
     }
+    // the deeper a protester is behind the police line, the harder the police hit him
+    if (ctx.camp === 'protest') d = { ...d, amount: d.amount * (1 + 1.5 * ctx.crowd.depth(this.feet.z)) };
     const amt = this.wounds.apply(d, this.armor);
     this.kit.onDamaged(d);
     this.hp -= amt;

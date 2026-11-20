@@ -122,9 +122,11 @@ src/
 3. **Chaos** (jauge ≥ 65) : charges, nuages de lacrymo poussés par le vent, incendies, barricades, canon à eau, blessés au sol,
    street medics et pompiers qui évacuent.
 
-Objectifs : **manifestant** = atteindre la place ; **CRS** = interpeller 13 manifestants (8 + 5 par joueur CRS en multijoueur)
+Objectifs : **manifestant** = percer la ligne ou tenir la place 6 secondes ; **CRS** = interpeller 13 manifestants (8 + 5 par joueur CRS en multijoueur)
 
 **Zone interdite** : une bande rouge peinte en travers de la rue, 10 m devant la ligne de CRS (elle recule avec la ligne). Dès qu'un manifestant joueur la franchit, à n'importe quelle phase, la police peut matraquer, menotter et tirer au LBD sans attendre les sommations, et les CRS au LBD visent d'abord l'intrus. Les lacrymos des CRS restent soumises aux sommations.
+
+**Défense de la place** : derrière la ligne, plus un manifestant joueur s'approche de la place, plus la police est forte : coups jusqu'à 2,5 fois plus forts, jusqu'à 8 CRS à ses trousses, et plus rapides qu'un sprint sur la place, où 8 CRS de réserve montent la garde. Foncer seul ne suffit plus.
 
 **Passerelles** : trois escaliers montent le long des façades vers une passerelle à 3 m de haut (deux côté cortège, une derrière la ligne de CRS) : on y lance par-dessus les boucliers, on y est hors de portée des matraques.
 
