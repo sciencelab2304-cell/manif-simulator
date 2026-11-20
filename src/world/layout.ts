@@ -1,10 +1,13 @@
+import { MAPS, type MapDef } from './maps';
+
 /**
- * Map of the fictional city of Valbrune.
- * The boulevard des Tanneurs runs along -Z. The crowd starts in the north (z > 0)
- * and walks south towards the place de la Concorde-Neuve (z < -200).
+ * Plan of the fictional city of Valbrune: a street runs along -Z, the crowd starts in the north (z > 0)
+ * and walks south towards the place (z < -200). The street widths come from the chosen map (`setMap`).
  */
-export const ROAD_HALF = 8; // carriageway: x in [-8, 8]
-export const FACADE_X = 14; // building facades at |x| = 14
+export let map: MapDef = MAPS[0];
+export let ROAD_HALF = 8; // carriageway: x in [-ROAD_HALF, ROAD_HALF]
+export let FACADE_X = 14; // building facades at |x| = FACADE_X
+export let SIDE = 12.5; // furthest x a prop or a pickup stands from the axis (just off the facades)
 export const AVE_START = 50; // northern end (closing facade)
 export const AVE_END = -200; // avenue opens on the place
 export const CROSS_Z0 = -84; // rue de la Corderie (cross street) z in [-98, -84]
@@ -24,6 +27,8 @@ export const HOLD_SECONDS = 6; // a protester player must stay that long on it t
 export const EVAC_PROTEST = { x: 0, z: 46 };
 export const EVAC_POLICE = { x: 4, z: -196 };
 export const MATCH_SECONDS = 600; // police must hold for 10 minutes
+/** In-game time (hours) after t seconds: a match lasts 3h30 of the city's day, from the map's start hour. */
+export const hourAt = (t: number) => map.startHour + 3.5 * t / MATCH_SECONDS;
 /** Protesters this close to the police line (or past it): the police may use force without waiting for the warnings. */
 export const NO_GO = 10;
 
@@ -40,11 +45,17 @@ export const underWalkway = (x: number, z: number, margin = 0) => WALKWAYS.some(
 
 export interface Rect { x0: number; x1: number; z0: number; z1: number } // x0<x1, z0<z1
 
-export const WALKABLE: Rect[] = [
-  { x0: -FACADE_X + 0.4, x1: FACADE_X - 0.4, z0: AVE_END - 1, z1: AVE_START - 0.6 },
-  { x0: -CROSS_HALF_X + 0.4, x1: CROSS_HALF_X - 0.4, z0: CROSS_Z1 + 0.4, z1: CROSS_Z0 - 0.4 },
-  { x0: -PLACE_HALF_X + 0.4, x1: PLACE_HALF_X - 0.4, z0: PLACE_Z1 + 0.4, z1: PLACE_Z0 },
-];
+export const WALKABLE: Rect[] = [];
+
+/** Sets the map of the next match (before the city is built). */
+export function setMap(def: MapDef) {
+  map = def; ROAD_HALF = def.road; FACADE_X = def.facade; SIDE = def.facade - 1.5;
+  WALKABLE.splice(0, WALKABLE.length,
+    { x0: -FACADE_X + 0.4, x1: FACADE_X - 0.4, z0: AVE_END - 1, z1: AVE_START - 0.6 },
+    { x0: -CROSS_HALF_X + 0.4, x1: CROSS_HALF_X - 0.4, z0: CROSS_Z1 + 0.4, z1: CROSS_Z0 - 0.4 },
+    { x0: -PLACE_HALF_X + 0.4, x1: PLACE_HALF_X - 0.4, z0: PLACE_Z1 + 0.4, z1: PLACE_Z0 });
+}
+setMap(map);
 
 export function inRect(r: Rect, x: number, z: number) {
   return x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;

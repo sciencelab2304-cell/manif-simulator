@@ -22,10 +22,13 @@ import { HealthBars } from './ui/bars';
 import { WaterCannon } from './vehicles/watercannon';
 import * as L from './world/layout';
 import { clamp } from './core/util';
-import type { Net } from './net/net';
+import type { Net, Member } from './net/net';
+import { lookSpec } from './meta/shop';
+import { showEndRewards } from './ui/meta';
 import { Avatar } from './net/avatar';
 import { Sync } from './net/sync';
 import { act } from './net/actions';
+import { mapById } from './world/maps';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -71,7 +74,8 @@ export class Game {
   /** police win by handcuffing this many protesters (more with more CRS players) */
   arrestGoal: number;
 
-  constructor(public camp: Camp, settings: Settings, input: Input, audio: AudioEngine, net: Net) {
+  constructor(public camp: Camp, settings: Settings, input: Input, audio: AudioEngine, net: Net, map: string) {
+    L.setMap(mapById(map));
     const q = profile(settings.quality);
     this.renderer = new THREE.WebGLRenderer({ antialias: !q.post, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(q.pixelRatio);
@@ -112,7 +116,7 @@ export class Game {
     ctx.truck = new WaterCannon();
     ctx.crowd = new Crowd();
     // human players: everyone in the lobby, or just you
-    const members = net.multi ? net.members : [{ id: net.me, name: 'Vous', camp }];
+    const members = net.multi ? net.members : [{ id: net.me, name: 'Vous', camp, looks: { [camp]: lookSpec(camp) } as Member['looks'] }];
     const spawns = members.map((m) => spawnPoint(m.camp, members.filter((o) => o.camp === m.camp).indexOf(m)));
     this.spawn = spawns[members.findIndex((m) => m.id === net.me)];
     this.arrestGoal = 8 + 5 * Math.max(1, members.filter((m) => m.camp === 'police').length);
@@ -120,7 +124,7 @@ export class Game {
     if (!net.isClient) {
       // the host (or solo game) owns the world; clients receive it from the host
       ctx.crowd.init(members.flatMap((m, i) => m.camp === 'police' ? [spawns[i].x] : []));
-      members.forEach((m, i) => ctx.crowd.add(new Avatar(m.id, m.name, m.camp, spawns[i])));
+      members.forEach((m, i) => ctx.crowd.add(new Avatar(m.id, m.name, m.camp, spawns[i], m.looks?.[m.camp])));
       ctx.crowd.me = ctx.crowd.humans.find((h) => h.local)!;
     }
     this.bars = new HealthBars();
@@ -140,7 +144,7 @@ export class Game {
       : ['[I] Slogan', '[E] Ramasser', '[F] Barricade / feu', '[H] Medic', '[M] Masque']).join('<br>');
     $('controls').innerHTML = CONTROLS[camp].map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('');
     // warm-up: compile shaders before the first frame
-    ctx.sky.update(0, ctx.player.pos);
+    ctx.sky.update(L.hourAt(0), ctx.player.pos);
     this.renderer.compile(this.scene, this.camera);
   }
 
@@ -235,8 +239,7 @@ export class Game {
 
     // wind slowly turns
     ctx.wind.set(Math.cos(ctx.time * 0.01) * 1.2, 0, 0.5 + Math.sin(ctx.time * 0.013) * 0.6);
-    const progress = ctx.time / L.MATCH_SECONDS;
-    ctx.sky.update(progress, ctx.player.pos);
+    ctx.sky.update(L.hourAt(ctx.time), ctx.player.pos);
     ctx.night = ctx.sky.night;
     ctx.city.update(ctx.night, ctx.time);
     ctx.particles.setFog(ctx.sky.fogColor, ctx.sky.fog.density);
@@ -293,7 +296,7 @@ export class Game {
       h.data.holdT = Math.hypot(h.feet.x - L.OBJECTIVE.x, h.feet.z - L.OBJECTIVE.z) < L.OBJECTIVE.r ? was + dt : 0;
       if (!was && h.data.holdT) h.feed(`Tenez la place ${L.HOLD_SECONDS} secondes !`, '#ffb36b');
       if (h.data.holdT >= L.HOLD_SECONDS) {
-        this.finish('protest', `${h.local ? 'Vous avez' : h.name + ' a'} percé la ligne et tenu la place de la Concorde-Neuve.`);
+        this.finish('protest', `${h.local ? 'Vous avez' : h.name + ' a'} percé la ligne et tenu ${L.map.square}.`);
         return;
       }
       // behind the police line: officers chase the intruder, more of them the closer he gets to the place
@@ -304,7 +307,7 @@ export class Game {
       }
     }
     if (ctx.crowd.humanArrests >= this.arrestGoal) { this.finish('police', `${ctx.crowd.humanArrests} manifestants interpellés : le cortège se disperse.`); return; }
-    if (ctx.time >= L.MATCH_SECONDS) { this.finish('police', 'La nuit est tombée : la police a tenu la place et le cortège s\'est dispersé.'); return; }
+    if (ctx.time >= L.MATCH_SECONDS) { this.finish('police', 'Le temps est écoulé : la police a tenu la place et le cortège s\'est dispersé.'); return; }
     if (P.lineZ <= L.PLACE_Z0 + 5) { this.finish('protest', 'La ligne de CRS a cédé sous la poussée du cortège : la place est à vous.'); return; }
     let onPlace = 0;
     for (const n of ctx.crowd.all) if (n.camp === 'protest' && n.standing && n.pos.z < L.PLACE_Z0 + 10) onPlace++;
@@ -358,9 +361,11 @@ export class Game {
         ctx.camp === 'police' ? ['Interpellations (vous)', s.myArrests] : ['Objets lancés (vous)', s.thrown],
         ctx.camp === 'police' ? ['Tirs LBD (vous)', `${s.lbdShots} (${s.lbdHits} touchés)`] : ['Barricades', s.barricades],
         ['Vitrines brisées', s.windows], ['Véhicules incendiés', s.vehiclesBurnt], ['Dégâts estimés', `${Math.round(s.damageEuros / 1000)} k€`],
-        ['Incendies', s.fires], ['Vos blessures', s.playerWounds],
+        ['Incendies', s.fires], ['Vos blessures', s.playerWounds], ['Éliminations (vous)', s.takedowns],
       ];
       $('end-stats').innerHTML = cells.map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+      showEndRewards({ camp: ctx.camp, win: winner ? win : null, multi: ctx.net.multi, seconds: ctx.time, survived: s.firstDown || ctx.time,
+        takedowns: s.takedowns, hits: s.hits, headHits: s.headHits, arrests: s.myArrests, thrown: s.thrown, downs: s.downs });
       $('end').classList.remove('hidden');
     }, 1200);
   }

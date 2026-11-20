@@ -1,5 +1,7 @@
 import type { Camp } from '../core/context';
 import type { Net } from '../net/net';
+import { mapCards, unlocked } from './meta';
+import { mapById } from '../world/maps';
 
 const $ = (id: string) => document.getElementById(id)!;
 const CAMP_FR: Record<Camp, string> = { protest: 'Manifestant', police: 'CRS' };
@@ -35,6 +37,11 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
   const render = () => {
     $('l-list').innerHTML = net.members.map((m, i) => `<li><span class="n">${esc(m.name)}${m.id === net.me ? '<i>vous</i>' : ''}${i === 0 ? '<i>hôte</i>' : ''}</span>`
       + `<span class="c ${m.camp}">${CAMP_FR[m.camp]}</span><span class="r ${m.ready ? 'ok' : ''}">${m.ready ? '✓ prêt' : 'pas prêt'}</span></li>`).join('');
+    // match options: the host chooses, the others see them
+    const o = net.options;
+    $('l-options').innerHTML = net.isHost
+      ? `<div class="maps">${mapCards(o.map, true)}</div><label class="chk"><input type="checkbox" id="l-balanced" ${o.balanced ? 'checked' : ''}> Partie équilibrée : sans améliorations ni bonus achetés</label>`
+      : `<p class="sub">Carte : <b>${mapById(o.map).name}</b>${o.balanced ? ' · partie équilibrée (sans améliorations)' : ' · améliorations plafonnées'}</p>`;
     const me = mine();
     $('l-ready').textContent = me?.ready ? 'Pas prêt' : 'Prêt';
     ($('l-start') as HTMLButtonElement).disabled = !net.allReady;
@@ -43,12 +50,18 @@ export function showLobby(net: Net, launch: (camp: Camp) => void) {
       : me?.ready ? 'En attente du lancement par l\'hôte…' : 'Choisissez votre camp puis cliquez sur « Prêt ».');
   };
   net.onMembers = render;
+  $('l-options').onclick = (e) => {
+    const t = e.target as HTMLElement, m = t.closest<HTMLElement>('[data-map]');
+    if (!net.isHost) return;
+    if (m && unlocked(m.dataset.map!)) net.setOptions({ map: m.dataset.map! });
+    else if (t.id === 'l-balanced') net.setOptions({ balanced: (t as HTMLInputElement).checked });
+  };
   render();
 
   $('l-copy').onclick = async () => status(await copy(net.code) ? 'Code copié.' : 'Copie impossible : notez le code.');
   $('l-share').onclick = async () => {
     const url = inviteLink(net.code);
-    if (navigator.share) { try { await navigator.share({ title: 'PAVÉS', text: `Rejoins ma partie de PAVÉS : code ${net.code}`, url }); } catch { /* cancelled */ } }
+    if (navigator.share) { try { await navigator.share({ title: 'Manif Simulator', text: `Rejoins ma partie de Manif Simulator : code ${net.code}`, url }); } catch { /* cancelled */ } }
     else status(await copy(url) ? 'Lien d\'invitation copié.' : url);
   };
   $('l-ready').onclick = () => net.set('ready', !mine()?.ready);

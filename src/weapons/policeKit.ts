@@ -11,6 +11,7 @@ const NAMES: Record<Weapon, string> = { lbd: 'LBD 40', gas: 'Lacrymo', sting: 'D
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 const CUFF_SECONDS = 2;
+const RELOAD = 1.8;
 
 /** CRS gear: LBD, tear gas, sting grenades, baton, shield, gas mask, orders, arrests. */
 export class PoliceKit {
@@ -31,7 +32,12 @@ export class PoliceKit {
   cuffing: { n: NPC; t: number } | null = null;
   private msgCd = 0;
 
-  constructor(private p: Player) {}
+  constructor(private p: Player) {
+    const L = p.perks, g = L.boost === 'grenade';
+    this.ammo += 3 * L.ammo + (L.boost === 'ammo' ? 10 : 0);
+    this.gas += L.mags + (g ? 2 : 0);
+    this.sting += Math.floor(L.mags / 2) + (g ? 1 : 0);
+  }
 
   get current(): Weapon { return this.weapons[this.sel]; }
 
@@ -50,10 +56,10 @@ export class PoliceKit {
     // reload
     if (this.reloadT > 0) {
       this.reloadT -= dt;
-      ctx.hud.progress(1 - this.reloadT / 1.8, 'Rechargement…');
+      ctx.hud.progress(1 - this.reloadT / (RELOAD / this.p.perks.reload), 'Rechargement…');
       if (this.reloadT <= 0) { this.chamber = 1; this.ammo--; ctx.audio.click(); ctx.hud.progress(0); }
     }
-    if (inp.hit('KeyR') && w === 'lbd' && this.chamber === 0 && this.ammo > 0 && this.reloadT <= 0) { this.reloadT = 1.8; ctx.audio.click(); }
+    if (inp.hit('KeyR') && w === 'lbd' && this.chamber === 0 && this.ammo > 0 && this.reloadT <= 0) { this.reloadT = RELOAD / this.p.perks.reload; ctx.audio.click(); }
 
     this.aiming = w === 'lbd' && inp.buttons[2] && this.reloadT <= 0;
     this.shieldUp = (w === 'baton' || w === 'gas' || w === 'sting') && inp.buttons[2] && !this.charging;

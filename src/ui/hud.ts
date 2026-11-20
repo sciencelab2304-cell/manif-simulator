@@ -10,6 +10,7 @@ const $ = (id: string) => document.getElementById(id)!;
 
 export class Hud {
   root = $('hud');
+  constructor() { $('mapname').textContent = L.map.name; }
   private promptEl = $('prompt');
   private promptMsg = '';
   private promptMsgT = 0;
@@ -91,12 +92,12 @@ export class Hud {
     // objective & clock
     const left = Math.max(0, L.MATCH_SECONDS - ctx.time);
     const mm = Math.floor(left / 60), ss = Math.floor(left % 60).toString().padStart(2, '0');
-    const hour = 16 * 60 + 30 + Math.floor(ctx.time / L.MATCH_SECONDS * 210);
+    const hour = Math.floor(L.hourAt(ctx.time) * 60) % 1440;
     const clock = `${Math.floor(hour / 60)}h${(hour % 60).toString().padStart(2, '0')}`;
     const st = ctx.stats;
     if (ctx.camp === 'protest') {
       const d = Math.round(Math.hypot(p.pos.x - L.OBJECTIVE.x, p.pos.z - L.OBJECTIVE.z));
-      $('objective').textContent = `Objectif : atteindre la place de la Concorde-Neuve · ${mm}:${ss}`;
+      $('objective').textContent = `Objectif : atteindre ${L.map.square} · ${mm}:${ss}`;
       $('score-main').innerHTML = `<b>${d} m</b> avant la place`;
     } else {
       $('objective').textContent = `Objectif : ${ctx.game.arrestGoal} interpellations, ou tenir la place · ${mm}:${ss}`;

@@ -8,7 +8,7 @@ import { pack, unpack, type Packable } from 'peerjs-js-binarypack';
  * ours travel as CANDIDATEs of a connection that does not exist, packed like PeerJS does. The server closes the socket
  * of anyone sending a CANDIDATE without a candidate object, hence the empty one.
  */
-const TAG = 'paves-relay';
+const TAG = 'manif-relay';
 
 type Socket = { send(d: object): void; on(e: 'message', fn: (d: Signal) => void): void };
 type Signal = { type: string; src: string; payload?: { connectionId?: string; d?: string } };

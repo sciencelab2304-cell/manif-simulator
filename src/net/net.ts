@@ -1,6 +1,7 @@
 import Peer, { type DataConnection, type PeerOptions } from 'peerjs';
 import type { Camp } from '../core/context';
 import { relay, type RelaySend } from './relay';
+import type { LookSpec } from '../meta/shop';
 
 /**
  * Peer-to-peer link (WebRTC through PeerJS). The host's peer id is derived from the game code, so the code is all a
@@ -8,7 +9,10 @@ import { relay, type RelaySend } from './relay';
  * Messages are arrays: [type, ...args].
  */
 export type Msg = unknown[];
-export interface Member { id: string; name: string; camp: Camp; ready: boolean }
+/** looks: the player's skins in each camp, so the others see them */
+export interface Member { id: string; name: string; camp: Camp; ready: boolean; looks?: Record<Camp, LookSpec> }
+/** Chosen by the host in the lobby. balanced: purchased upgrades and start bonuses are off. */
+export interface MatchOptions { map: string; balanced: boolean }
 
 /** A connection as the game sees it: direct (PeerJS / WebRTC) or through the relay (relay.ts). */
 interface Link { peer: string; send(m: Msg): void; close(): void; onData(fn: (m: Msg) => void): void; onClose(fn: () => void): void }
@@ -33,7 +37,7 @@ class RelayLink implements Link {
 class Blocked extends Error {}
 
 export const MAX_PLAYERS = 8;
-const PREFIX = 'paves-v1-';
+const PREFIX = 'manif-sim-v1-';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** Optional signalling server, e.g. ?peer=localhost:9000 (see README); the free PeerJS cloud otherwise. */
@@ -49,6 +53,9 @@ export class Net {
   me = 'local';
   code = '';
   members: Member[] = [];
+  options: MatchOptions = { map: 'tanneurs', balanced: false };
+  /** the local player's skins, sent with his name */
+  looks?: Record<Camp, LookSpec>;
   started = false;
   /** game messages: (message, sender id) */
   handler: (m: Msg, from: string) => void = () => {};
@@ -76,7 +83,7 @@ export class Net {
         throw e;
       }
       this.role = 'host'; this.code = code;
-      this.members = [{ id: this.me, name, camp, ready: true }];
+      this.members = [{ id: this.me, name, camp, ready: true, looks: this.looks }];
       this.peer!.on('connection', (c) => this.accept(direct(c)));
       this.hostRelay();
       return code;
@@ -107,7 +114,7 @@ export class Net {
     this.conns.set('host', c);
     c.onData((m) => this.fromHost(m));
     c.onClose(() => this.onClosed(this.started ? 'Partie terminée : l\'hôte a quitté.' : 'L\'hôte a fermé le salon.'));
-    c.send(['hello', name, camp]);
+    c.send(['hello', name, camp, this.looks]);
   }
 
   private connect(id: string) {
@@ -199,7 +206,7 @@ export class Net {
       if (m[0] === 'hello') {
         if (this.started || this.members.length >= MAX_PLAYERS) { c.send(['refused', this.started ? 'La partie a déjà commencé.' : 'La partie est complète (8 joueurs).']); setTimeout(() => c.close(), 500); return; }
         this.conns.set(c.peer, c);
-        this.members.push({ id: c.peer, name: String(m[1]).slice(0, 16) || 'Anonyme', camp: m[2] as Camp, ready: false });
+        this.members.push({ id: c.peer, name: String(m[1]).slice(0, 16) || 'Anonyme', camp: m[2] as Camp, ready: false, looks: m[3] as Member['looks'] });
         this.lobbyChanged();
       } else if (m[0] === 'camp' || m[0] === 'ready') {
         const mem = this.members.find((x) => x.id === c.peer);
@@ -215,12 +222,15 @@ export class Net {
   }
 
   private fromHost(m: Msg) {
-    if (m[0] === 'lobby') { this.members = m[1] as Member[]; this.onMembers(); }
+    if (m[0] === 'lobby') { this.members = m[1] as Member[]; this.options = m[2] as MatchOptions; this.onMembers(); }
     else if (m[0] === 'refused') this.onClosed(m[1] as string);
-    else { if (m[0] === 'start') { this.members = m[1] as Member[]; this.started = true; } this.handler(m, 'host'); }
+    else { if (m[0] === 'start') { this.members = m[1] as Member[]; this.options = m[2] as MatchOptions; this.started = true; } this.handler(m, 'host'); }
   }
 
-  private lobbyChanged() { this.broadcast(['lobby', this.members]); this.onMembers(); }
+  private lobbyChanged() { this.broadcast(['lobby', this.members, this.options]); this.onMembers(); }
+
+  /** Host: map and balance of the match. */
+  setOptions(o: Partial<MatchOptions>) { Object.assign(this.options, o); this.lobbyChanged(); }
 
   /** Lobby choices of the local player. */
   set(field: 'camp' | 'ready', v: Camp | boolean) {
@@ -232,7 +242,7 @@ export class Net {
 
   start() {
     this.started = true;
-    this.broadcast(['start', this.members]);
+    this.broadcast(['start', this.members, this.options]);
   }
 
   leave() {

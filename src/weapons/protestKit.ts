@@ -35,7 +35,13 @@ export class ProtestKit {
   target: Target | null = null;
   private msgCd = 0;
 
-  constructor(private p: Player) {}
+  constructor(private p: Player) {
+    const L = p.perks, inv = this.inv;
+    inv.pave += 2 * L.ammo + (L.boost === 'ammo' ? 6 : 0);
+    inv.mortier += L.mags + (L.boost === 'ammo' ? 2 : 0);
+    inv.fusee += L.mags + (L.boost === 'grenade' ? 1 : 0);
+    inv.fumigene += L.boost === 'grenade' ? 2 : 0;
+  }
 
   get list(): Slot[] { return [...ORDER.filter((k) => (this.inv[k] ?? 0) > 0), LIGHTER]; }
   get current(): Slot { const l = this.list; return l[this.sel % l.length]; }
@@ -132,7 +138,7 @@ export class ProtestKit {
       else { this.charging = true; this.charge = 0; this.lob = inp.btnPressed[2]; }
     }
     if (this.charging) {
-      this.charge = clamp(this.charge + dt / 0.85, 0, 1);
+      this.charge = clamp(this.charge + dt * p.perks.reload / 0.85, 0, 1);
       ctx.hud.charge(this.charge);
       const released = this.lob ? inp.btnReleased[2] || !inp.buttons[2] : inp.btnReleased[0] || !inp.buttons[0];
       if (released) { this.throw(cur); this.charging = false; ctx.hud.charge(0); }

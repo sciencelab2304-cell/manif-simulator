@@ -16,7 +16,7 @@ const SHOPS = [
   'FLEURS & CIE', 'LIBRAIRIE LA PLUME', 'CAFÉ DE LA GARE', 'BOUCHERIE ROUX', 'AGENCE IMMOBILIÈRE', 'PRIMEUR', 'CORDONNERIE',
   'BAZAR DU COIN', 'TÉLÉPHONIE PLUS', 'ASSURANCES VALBRUNE', 'BIJOUTERIE ORLANE', 'LAVERIE', 'SUPÉRETTE', 'CRÊPERIE',
 ];
-const STONES = ['#cfc3a9', '#d6ccb6', '#c8bba0', '#ddd2bc'];
+const STATION_HALF = 40; // half width of the station front on the station map
 const CAR_COLORS = [0x8c1d18, 0x1c2a44, 0xd8d8d2, 0x2b2b2b, 0x6d7275, 0x29452f, 0xb9b3a6, 0x3a5a7a, 0x4a2d1f, 0xe0dccf];
 
 export function groundY(x: number, z: number) {
@@ -50,11 +50,12 @@ export class City {
     this.ground();
     this.buildings();
     this.streetFurniture();
-    this.parkedCars();
+    if (L.map.parked) this.parkedCars();
     this.busShelters();
     this.chantier();
     this.terrace();
     this.walkways();
+    if (L.map.station) this.station(); else this.monument();
     this.place();
     this.policeVans();
     this.bins();
@@ -101,10 +102,11 @@ export class City {
     for (let z = L.AVE_START - 4; z > L.AVE_END + 4; z -= 9) {
       if (z < L.CROSS_Z0 + 8 && z > L.CROSS_Z1 - 8) continue;
       strip(-0.08, 0.08, z - 4.5, z);
-      strip(-4.08, -3.92, z - 3, z); strip(3.92, 4.08, z - 3, z);
+      const lane = L.ROAD_HALF / 2;
+      strip(-lane - 0.08, -lane + 0.08, z - 3, z); strip(lane - 0.08, lane + 0.08, z - 3, z);
     }
     for (const zc of [L.CROSS_Z0 + 4, L.CROSS_Z1 - 4, L.AVE_END + 3]) {
-      for (let x = -7.5; x < 7.5; x += 1.2) strip(x, x + 0.6, zc - 2, zc + 2);
+      for (let x = -L.ROAD_HALF + 0.5; x < L.ROAD_HALF - 0.5; x += 1.2) strip(x, x + 0.6, zc - 2, zc + 2);
     }
     const markMesh = new THREE.Mesh(mark.build(), new THREE.MeshStandardMaterial({ color: 0xd9d6cc, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1 }));
     markMesh.receiveShadow = true; this.root.add(markMesh);
@@ -112,7 +114,7 @@ export class City {
 
   // ------------------------------------------------------------------ buildings
   private buildings() {
-    const facades = STONES.map((c, i) => T.facadeTextures(c, 100 + i));
+    const facades = L.map.stones.map((c, i) => T.facadeTextures(c, 100 + i));
     this.facadeMats = facades.map((f) => new THREE.MeshStandardMaterial({
       map: f.map, emissiveMap: f.emissive, emissive: new THREE.Color(1, 0.85, 0.6), emissiveIntensity: 0, roughness: 0.85, metalness: 0,
     }));
@@ -121,7 +123,7 @@ export class City {
     const railMat = new THREE.MeshStandardMaterial({ map: T.railTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.6, color: 0x222222 });
     const facadeGeos: THREE.BufferGeometry[][] = facades.map(() => []);
     const mansardGeos: THREE.BufferGeometry[] = [], stoneGeos: THREE.BufferGeometry[] = [], railGeos: THREE.BufferGeometry[] = [];
-    const H = 4.6 + 5 * 3.1; // 20.1 m
+    const H = 4.6 + L.map.storeys * 3.1; // shops, then 3.1 m storeys
 
     type Face = 'px' | 'nx' | 'pz' | 'nz';
     const shopFaces: { x0: number; x1: number; z0: number; z1: number; face: Face }[] = [];
@@ -143,9 +145,9 @@ export class City {
         const cx = x0 + 2.5 + this.rnd() * (x1 - x0 - 5), cz = z0 + 2.5 + this.rnd() * (z1 - z0 - 5);
         s.box(cx - 0.5, cx + 0.5, H + 2, H + 5.2, cz - 0.3, cz + 0.3, 2, 2, true);
       }
-      // balconies on the 2nd and 5th floors of street faces
+      // balconies on the 2nd and top floors of street faces
       for (const f of street) {
-        for (const by of [4.6 + 3.1, 4.6 + 4 * 3.1]) {
+        for (const by of [4.6 + 3.1, 4.6 + (L.map.storeys - 1) * 3.1]) {
           const d = 0.75;
           const r = new GeoBuilder();
           if (f === 'px' || f === 'nx') {
@@ -202,8 +204,9 @@ export class City {
       const sx0 = s < 0 ? -L.PLACE_HALF_X - 16 : L.PLACE_HALF_X, sx1 = s < 0 ? -L.PLACE_HALF_X : L.PLACE_HALF_X + 16;
       strip(sx0, sx1, L.PLACE_Z1, L.PLACE_Z0, [s < 0 ? 'px' : 'nx'], true);
     }
-    // the place's back facade (city hall-ish)
-    strip(-L.PLACE_HALF_X - 16, L.PLACE_HALF_X + 16, L.PLACE_Z1 - 16, L.PLACE_Z1, ['pz'], false);
+    // the place's back facade (city hall-ish), around the station on the station map
+    if (L.map.station) for (const s of [-1, 1]) strip(s < 0 ? -L.PLACE_HALF_X - 16 : STATION_HALF, s < 0 ? -STATION_HALF : L.PLACE_HALF_X + 16, L.PLACE_Z1 - 16, L.PLACE_Z1, ['pz'], false);
+    else strip(-L.PLACE_HALF_X - 16, L.PLACE_HALF_X + 16, L.PLACE_Z1 - 16, L.PLACE_Z1, ['pz'], false);
     // fill behind the cross-street blocks so the skyline has no holes
     for (const s of [-1, 1]) {
       const a = L.FACADE_X + D;
@@ -264,34 +267,35 @@ export class City {
       sign.position.copy(O).addScaledVector(R, len / 2).addScaledVector(N, 0.06); sign.position.y = 4.2;
       sign.rotation.y = yaw;
       this.root.add(sign);
-      this.signs.push(sign.material);
+      this.glows.push(sign.material);
       void gy;
     }
     ctx.destruction.createWindows(panes);
   }
-  signs: THREE.MeshStandardMaterial[] = [];
+  glows: THREE.MeshStandardMaterial[] = []; // signs and windows lit at night
 
   // ------------------------------------------------------------------ furniture
   private streetFurniture() {
     const trunkPos: THREE.Vector3[] = [];
     const lampPos: { p: THREE.Vector3; side: number }[] = [];
     const bollards: THREE.Vector3[] = [];
+    const R = L.ROAD_HALF, F = L.FACADE_X, treeX = (R + F) / 2 + 0.3, trees = F - R >= 5; // no trees on narrow sidewalks
     for (const s of [-1, 1]) {
       for (let z = L.AVE_START - 6; z > L.AVE_END + 4; z -= 9) {
         if (z < L.CROSS_Z0 + 3 && z > L.CROSS_Z1 - 3) continue;
         if (s < 0 && z < -55 && z > -76) continue; // construction site
         if (s > 0 && z < 2 && z > -18) continue; // terrace
-        if (L.underWalkway(s * 11.3, z, 3)) continue;
-        trunkPos.push(new THREE.Vector3(s * 11.3, 0.12, z));
+        if (!trees || L.underWalkway(s * treeX, z, 3)) continue;
+        trunkPos.push(new THREE.Vector3(s * treeX, 0.12, z));
       }
       for (let z = L.AVE_START - 10; z > L.AVE_END + 2; z -= 18) {
         if (z < L.CROSS_Z0 + 2 && z > L.CROSS_Z1 - 2) continue;
-        lampPos.push({ p: new THREE.Vector3(s * 8.55, 0.12, z), side: s });
+        lampPos.push({ p: new THREE.Vector3(s * (R + 0.55), 0.12, z), side: s });
       }
       for (let z = L.AVE_START - 2; z > L.AVE_END + 2; z -= 2.2) {
         if (z < L.CROSS_Z0 + 1 && z > L.CROSS_Z1 - 1) continue;
         if (Math.abs(((z % 18) + 18) % 18 - 4) < 1.2) continue;
-        bollards.push(new THREE.Vector3(s * 8.3, 0.12, z));
+        bollards.push(new THREE.Vector3(s * (R + 0.3), 0.12, z));
       }
     }
     // trees around the place
@@ -373,7 +377,7 @@ export class City {
     for (let i = 0; i < 16; i++) { pg.fillStyle = pc[i % pc.length]; pg.fillRect((i % 8) * 64, Math.floor(i / 8) * 128, 62, 126);
       pg.fillStyle = 'rgba(255,255,255,0.8)'; pg.font = 'bold 14px sans-serif'; pg.fillText(['CONCERT', 'THÉÂTRE', 'EXPO', 'CIRQUE'][i % 4], (i % 8) * 64 + 4, Math.floor(i / 8) * 128 + 30); }
     const posterTex = new THREE.CanvasTexture(posterC); posterTex.colorSpace = THREE.SRGBColorSpace; posterTex.wrapS = THREE.RepeatWrapping;
-    for (const [x, z] of [[-11.5, 18], [11.5, -112]]) {
+    for (const [x, z] of [[2.5 - F, 18], [F - 2.5, -112]]) {
       const col = new THREE.Group();
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 2.6, 20, 1, true), new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.8 }));
       body.position.y = 1.5;
@@ -419,7 +423,7 @@ export class City {
         if (this.rnd() < 0.25) { z -= 4 + this.rnd() * 4; continue; }
         const paint = new THREE.MeshStandardMaterial({ color: CAR_COLORS[Math.floor(this.rnd() * CAR_COLORS.length)], roughness: 0.32, metalness: 0.55 });
         const car = new THREE.Mesh(geo, [paint, glass, tire, lightM]);
-        const x = s * 6.95;
+        const x = s * (L.ROAD_HALF - 1.05);
         car.position.set(x, 0, z);
         car.rotation.y = s > 0 ? Math.PI : 0;
         car.castShadow = true; car.receiveShadow = true;
@@ -439,7 +443,8 @@ export class City {
     const roofM = new THREE.MeshStandardMaterial({ color: 0x9aa6a0, roughness: 0.3, metalness: 0.4, transparent: true, opacity: 0.85 });
     const adM = new THREE.MeshStandardMaterial({ map: T.signTexture('VALBRUNE · VILLE LUMIÈRE', '#273a6b', '#f1e6c8', 512, 128), emissive: 0xffffff, emissiveIntensity: 0.0 });
     adM.emissiveMap = adM.map;
-    for (const [x, z, yaw] of [[-10.9, 8, Math.PI / 2], [10.9, -42, -Math.PI / 2]] as [number, number, number][]) {
+    const x0 = L.ROAD_HALF + 2.9;
+    for (const [x, z, yaw] of [[-x0, 8, Math.PI / 2], [x0, -42, -Math.PI / 2]] as [number, number, number][]) {
       const g = new THREE.Group();
       const W = 4.2, D = 1.5, H = 2.5;
       for (const px of [-W / 2, W / 2]) for (const pz of [-D / 2, D / 2]) {
@@ -468,7 +473,7 @@ export class City {
   // ------------------------------------------------------------------ construction site
   private chantier() {
     // fenced area on the left sidewalk, with a pile of loose cobbles and pallets
-    const cx = -11, cz = -66;
+    const cx = -L.ROAD_HALF - 3, cz = -66;
     const sand = new THREE.Mesh(new THREE.ConeGeometry(1.4, 1, 14), new THREE.MeshStandardMaterial({ color: 0xb59a6c, roughness: 1 }));
     sand.position.set(cx - 1.5, 0.6, cz + 4); sand.castShadow = true; sand.receiveShadow = true; this.root.add(sand);
     const paveM = new THREE.MeshStandardMaterial({ color: 0x7d746a, roughness: 0.95 });
@@ -487,7 +492,7 @@ export class City {
     const patch = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 9).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 1 }));
     patch.position.set(cx, 0.125, cz); patch.receiveShadow = true; this.root.add(patch);
     // barriers and pallets are dynamic props (used for barricades)
-    for (let i = 0; i < 4; i++) ctx.destruction.spawnProp('barrier', new THREE.Vector3(-8.9, 0.6, cz + 4.5 - i * 2.6), Math.PI / 2);
+    for (let i = 0; i < 4; i++) ctx.destruction.spawnProp('barrier', new THREE.Vector3(-L.ROAD_HALF - 0.9, 0.6, cz + 4.5 - i * 2.6), Math.PI / 2);
     for (let i = 0; i < 4; i++) ctx.destruction.spawnProp('pallet', new THREE.Vector3(cx - 1.4 + (i % 2) * 0.1, 0.3 + Math.floor(i / 2) * 0.16, cz - 4.5 + (i % 2) * 0.2), 0);
     this.pickupSpots.push({ x: cx + 1, y: 0.2, z: cz + 2, kind: 'pave' }, { x: cx + 1.4, y: 0.2, z: cz + 1, kind: 'pave' });
   }
@@ -497,7 +502,7 @@ export class City {
     const tableM = new THREE.MeshStandardMaterial({ color: 0x8f8f8a, roughness: 0.3, metalness: 0.8 });
     const chairM = new THREE.MeshStandardMaterial({ color: 0x7a3a1d, roughness: 0.8 });
     const tables: THREE.Vector3[] = [];
-    for (let z = 0; z > -16; z -= 2.6) for (const x of [10.2, 12.4]) tables.push(new THREE.Vector3(x, 0.12, z));
+    for (let z = 0; z > -16; z -= 2.6) for (const x of [L.FACADE_X - 3.8, L.FACADE_X - 1.6]) tables.push(new THREE.Vector3(x, 0.12, z));
     const top = new THREE.InstancedMesh(mergeGeometries([normGeo(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 14).translate(0, 0.74, 0)), normGeo(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 6).translate(0, 0.36, 0))]), tableM, tables.length);
     const chairGeo = mergeGeometries([normGeo(new THREE.BoxGeometry(0.42, 0.04, 0.42).translate(0, 0.45, 0)), normGeo(new THREE.BoxGeometry(0.42, 0.45, 0.04).translate(0, 0.68, -0.2))]);
     const chairs = new THREE.InstancedMesh(chairGeo, chairM, tables.length * 2);
@@ -512,7 +517,7 @@ export class City {
     this.root.add(top, chairs);
     // café awning
     const aw = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 17), new THREE.MeshStandardMaterial({ color: 0x5a1a16, roughness: 0.9 }));
-    aw.position.set(12.2, 3.4, -7.5); aw.rotation.z = -0.12; aw.castShadow = true; this.root.add(aw);
+    aw.position.set(L.FACADE_X - 1.8, 3.4, -7.5); aw.rotation.z = -0.12; aw.castShadow = true; this.root.add(aw);
   }
 
   // ------------------------------------------------------------------ walkways
@@ -553,7 +558,8 @@ export class City {
   }
 
   // ------------------------------------------------------------------ place
-  private place() {
+  /** Column with a statue in the middle of the place. */
+  private monument() {
     const stone = new THREE.MeshStandardMaterial({ color: 0xcdbf9f, roughness: 0.8 });
     const bronze = new THREE.MeshStandardMaterial({ color: 0x3c4a3a, roughness: 0.35, metalness: 0.9 });
     const g = new THREE.Group();
@@ -576,6 +582,48 @@ export class City {
     ctx.physics.addStaticBox(L.MONUMENT.x, 0.6, L.MONUMENT.z, 4.5, 0.6, 4.5);
     ctx.physics.addStaticBox(L.MONUMENT.x, 6, L.MONUMENT.z, 2.5, 6, 2.5);
     this.boxes.push({ x: L.MONUMENT.x, z: L.MONUMENT.z, hx: 4.8, hz: 4.8 });
+  }
+
+  /** Railway station closing the place: stone front with a lit arched window, clock tower, glass vault behind. */
+  private station() {
+    const Z = L.PLACE_Z1, W = STATION_HALF, P = ctx.physics;
+    const stone = new THREE.MeshStandardMaterial({ color: 0xc9c1ae, roughness: 0.85 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x9fb4c0, roughness: 0.1, metalness: 0.6, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+      emissive: 0xffd9a0, emissiveIntensity: 0 });
+    const pane = new THREE.MeshStandardMaterial({ color: 0x334048, roughness: 0.2, metalness: 0.5, emissive: 0xffc878, emissiveIntensity: 0 });
+    const clock = new THREE.MeshStandardMaterial({ color: 0xf2eee2, roughness: 0.5, emissive: 0xfff1d0, emissiveIntensity: 0 });
+    this.glows.push(glass, pane, clock);
+    const g = new GeoBuilder();
+    const solid = (x0: number, x1: number, y1: number, z0: number, z1: number) => {
+      g.box(x0, x1, 0, y1, z0, z1, 4, 4, true);
+      P.addStaticBox((x0 + x1) / 2, y1 / 2, (z0 + z1) / 2, (x1 - x0) / 2, y1 / 2, (z1 - z0) / 2);
+      this.buildingRects.push({ x0, x1, z0, z1 });
+    };
+    solid(-W, W, 16, Z - 8, Z); // front
+    solid(-6, 6, 21, Z - 8, Z - 1); // pediment with the clock
+    solid(-W, -W + 8, 32, Z - 10, Z + 0.5); // clock tower
+    const body = new THREE.Mesh(g.build(), stone); body.castShadow = true; body.receiveShadow = true; this.root.add(body);
+    const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number) => {
+      const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); this.root.add(m); return m;
+    };
+    add(new THREE.CircleGeometry(11, 32, 0, Math.PI), pane, 0, 3, Z + 0.03); // great arched window
+    for (let x = -W + 12; x < W - 4; x += 6) if (Math.abs(x) > 13) add(new THREE.PlaneGeometry(3, 6), pane, x, 4, Z + 0.03); // doors and side windows
+    for (const [x, y, r] of [[0, 18.5, 2], [-W + 4, 27, 2.4]]) {
+      add(new THREE.CircleGeometry(r, 24), clock, x, y, Z + 0.06 + (x ? 0.5 : -1));
+      const hand = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+      add(new THREE.BoxGeometry(0.12, r * 0.8, 0.04).translate(0, r * 0.4, 0), hand, x, y, Z + 0.1 + (x ? 0.5 : -1)).rotation.z = -0.9;
+      add(new THREE.BoxGeometry(0.16, r * 0.55, 0.04).translate(0, r * 0.27, 0), hand, x, y, Z + 0.1 + (x ? 0.5 : -1)).rotation.z = 2.6;
+    }
+    // the great glass vault over the platforms, rising above the front
+    const vault = add(new THREE.CylinderGeometry(19, 19, 70, 24, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), glass, 0, 12, Z - 8 - 35);
+    vault.renderOrder = 2;
+    const ribs = new THREE.InstancedMesh(new THREE.TorusGeometry(19, 0.25, 6, 24, Math.PI), new THREE.MeshStandardMaterial({ color: 0x2e3a40, metalness: 0.7, roughness: 0.4 }), 8);
+    for (let i = 0; i < 8; i++) ribs.setMatrixAt(i, new THREE.Matrix4().makeTranslation(0, 12, Z - 8 - i * 10));
+    this.root.add(ribs);
+  }
+
+  /** Benches and loose cobbles on the place. */
+  private place() {
     // loose cobbles on the place (dépaver)
     for (const [x, z] of [[-20, -232], [22, -262], [-8, -270], [30, -220]]) this.paveSpots.push(new THREE.Vector3(x, 0, z));
     // benches
@@ -595,7 +643,8 @@ export class City {
     const gyroM = new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2a5bff, emissiveIntensity: 0 });
     const grill = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.7 });
     const plate = new THREE.MeshStandardMaterial({ map: T.signTexture('POLICE', '#1b2f6b', '#ffffff', 256, 64) });
-    for (const [x, z, yaw] of [[-10.6, L.VAN_Z, 0], [10.6, L.VAN_Z - 2, 0], [-4.5, L.VAN_Z - 8, 0.2]] as [number, number, number][]) {
+    const vx = L.FACADE_X - 3.4;
+    for (const [x, z, yaw] of [[-vx, L.VAN_Z, 0], [vx, L.VAN_Z - 2, 0], [-L.ROAD_HALF * 0.56, L.VAN_Z - 8, 0.2]] as [number, number, number][]) {
       const g = new THREE.Group();
       const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.2, 5.6), white); body.position.y = 1.5;
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.12, 0.3, 5.62), blue); stripe.position.y = 1.2;
@@ -625,15 +674,15 @@ export class City {
     for (const s of [-1, 1]) for (let z = L.AVE_START - 12; z > L.CRS_LINE_Z + 10; z -= 21) {
       if (z < L.CROSS_Z0 + 3 && z > L.CROSS_Z1 - 3) continue;
       if (s < 0 && z < -55 && z > -76) continue;
-      ctx.destruction.spawnProp('bin', new THREE.Vector3(s * 13.3, 0.62, z), 0);
-      if (this.rnd() < 0.6) ctx.destruction.spawnProp('bin', new THREE.Vector3(s * 13.3, 0.62, z - 0.9), 0);
-      this.pickupSpots.push({ x: s * 12.6, y: 0.2, z: z - 1.8, kind: this.rnd() < 0.5 ? 'canette' : 'conserve' });
+      ctx.destruction.spawnProp('bin', new THREE.Vector3(s * (L.FACADE_X - 0.7), 0.62, z), 0);
+      if (this.rnd() < 0.6) ctx.destruction.spawnProp('bin', new THREE.Vector3(s * (L.FACADE_X - 0.7), 0.62, z - 0.9), 0);
+      this.pickupSpots.push({ x: s * (L.FACADE_X - 1.4), y: 0.2, z: z - 1.8, kind: this.rnd() < 0.5 ? 'canette' : 'conserve' });
     }
     for (const s of [-1, 1]) for (let k = 0; k < 3; k++) ctx.destruction.spawnProp('barrier', new THREE.Vector3(s * (L.FACADE_X - 1.2), 0.6, L.CRS_LINE_Z + 6 + k * 2.6), Math.PI / 2);
     // scattered pickups along the avenue
     for (let i = 0; i < 26; i++) {
       const z = L.AVE_START - 5 - this.rnd() * (L.AVE_START - L.CRS_LINE_Z - 20);
-      const x = (this.rnd() - 0.5) * 2 * 12.5;
+      const x = (this.rnd() - 0.5) * 2 * L.SIDE;
       const kinds = ['pave', 'pave', 'canette', 'bouteille', 'conserve', 'pave'];
       this.pickupSpots.push({ x, y: groundY(x, z) + 0.1, z, kind: kinds[Math.floor(this.rnd() * kinds.length)] });
     }
@@ -641,14 +690,14 @@ export class City {
     for (const [x, z, k] of [[-12.5, 30, 'mortier'], [12.4, 22, 'fusee'], [12.8, -20, 'mortier'], [-12.6, -10, 'fusee'], [-12.7, -48, 'fusee'], [12.5, -40, 'mortier'],
       [12.6, -78, 'mortier'], [-12.5, -70, 'fusee'], [-12.4, -105, 'fusee'], [12.6, -95, 'mortier'],
       [12.7, 10, 'panneau'], [-12.8, -30, 'panneau'], [-12.5, -2, 'serum'], [12.5, -60, 'masque'], [-13, -120, 'fumigene']] as [number, number, string][]) {
-      this.pickupSpots.push({ x, y: 0.25, z, kind: k });
+      this.pickupSpots.push({ x: Math.sign(x) * (Math.abs(x) - 12.5 + L.SIDE), y: 0.25, z, kind: k }); // listed for the boulevard des Tanneurs
     }
   }
 
   // ------------------------------------------------------------------ per frame
   update(night: number, time: number) {
     for (const m of this.facadeMats) m.emissiveIntensity = night * 0.9;
-    for (const s of this.signs) s.emissiveIntensity = night * 0.6;
+    for (const s of this.glows) s.emissiveIntensity = night * 0.6;
     (this.lampBulbs.material as THREE.MeshStandardMaterial).emissiveIntensity = night > 0.15 ? 6 * Math.min(1, night * 2) : 0;
     (this.lampPools.material as THREE.MeshBasicMaterial).opacity = Math.min(1, night * 1.5) * 0.35;
     void time;

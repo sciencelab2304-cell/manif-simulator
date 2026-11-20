@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#12142a" />
-  <title>Pavés — Valbrune</title>
+  <title>Manif Simulator — Valbrune</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" />
@@ -26,7 +26,7 @@
     <div id="prompt"></div>
     <div id="progress"><div id="progress-label"></div><div class="bar"><div id="progress-fill"></div></div></div>
     <div id="topleft">
-      <div id="place">Boulevard des Tanneurs · Valbrune · <span id="clock">16h30</span></div>
+      <div id="place"><span id="mapname"></span> · Valbrune · <span id="clock"></span></div>
       <div id="phase">Phase : <b>Calme</b></div>
       <div id="tension"><div id="tension-fill"></div></div>
       <div id="objective"></div>
@@ -50,9 +50,14 @@
 
   <div id="menu" class="screen">
     <div class="menu-inner">
+      <div id="meta-bar">
+        <div class="mb-coins"><i class="coin"></i><b id="mb-coins">0</b><span>Pavés d'or</span></div>
+        <div class="mb-level">Niv. <b id="mb-level">1</b><div class="xpbar"><div id="mb-xp"></div></div><span id="mb-xpt"></span></div>
+        <div class="mb-btns"><button id="mb-shop" class="ghost">Boutique</button><button id="mb-ch" class="ghost">Défis<i id="mb-ch-dot" class="hidden"></i></button><button id="mb-ad" class="ghost">Pub récompensée</button></div>
+      </div>
       <div class="kicker">Valbrune · fiction</div>
-      <h1>PAVÉS</h1>
-      <p class="sub">Fin d'après-midi sur le boulevard des Tanneurs. Le cortège descend vers la place de la Concorde-Neuve, la ligne de CRS l'attend. Pour l'instant, tout est calme.</p>
+      <h1>MANIF<br>SIMULATOR</h1>
+      <p class="sub">Le cortège descend vers la place, la ligne de CRS l'attend. Pour l'instant, tout est calme.</p>
       <div class="pegi">18+ · violence réaliste, sang</div>
       <label class="pseudo">Pseudo <input id="pseudo" maxlength="16" placeholder="Anonyme" autocomplete="nickname"></label>
       <div class="camps">
@@ -65,6 +70,8 @@
           <div class="cd">Casque, bouclier, armure. LBD, lacrymo, désencerclement, matraque, charge en groupe, canon à eau. Objectif : tenir la place.</div>
         </button>
       </div>
+      <div id="boost-line" class="hidden"></div>
+      <div id="maps"></div>
       <div class="modes">
         <button id="m-solo" disabled>Solo</button>
         <button id="m-create" class="ghost" disabled>Créer une partie</button>
@@ -79,6 +86,7 @@
         <label class="chk"><input type="checkbox" id="s-blood"> Sang et blessures visibles</label>
         <label class="chk"><input type="checkbox" id="s-invert"> Inverser l'axe vertical</label>
         <label class="chk"><input type="checkbox" id="s-third"> Vue à la 3e personne (touche P en jeu)</label>
+        <button id="s-reset" class="ghost">Réinitialiser la progression</button>
       </details>
       <div id="loading">Chargement du moteur physique…</div>
       <p class="warn">Ville, lieux et personnages inventés. Toute ressemblance serait fortuite.</p>
@@ -91,6 +99,7 @@
       <div class="code">Code <b id="l-code">·····</b><button id="l-copy" class="ghost">Copier</button><button id="l-share" class="ghost">Partager</button></div>
       <p class="sub">Vos amis choisissent « Rejoindre une partie » et saisissent ce code (ou ouvrent le lien partagé).</p>
       <ul id="l-list"></ul>
+      <div id="l-options"></div>
       <button id="l-ready">Prêt</button>
       <button id="l-camp" class="ghost">Changer de camp</button>
       <button id="l-start">Lancer la partie</button>
@@ -115,11 +124,16 @@
       <div class="kicker" id="end-kicker">Fin</div>
       <h2 id="end-title"></h2>
       <p class="sub" id="end-reason"></p>
+      <div id="end-rewards"></div>
       <div id="end-stats"></div>
       <button id="again">Rejouer</button>
       <button id="switch" class="ghost">Changer de camp</button>
     </div>
   </div>
+
+  <div id="shop" class="screen hidden"><div class="menu-inner"></div></div>
+  <div id="challenges" class="screen hidden"><div class="menu-inner"></div></div>
+  <div id="adpick" class="screen hidden"><div class="menu-inner"></div></div>
 
   <div id="rotate"><div>↻</div>Tournez votre téléphone à l'horizontale pour jouer.</div>
 

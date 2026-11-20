@@ -182,8 +182,7 @@ export class NPC {
     if (amt > 6 && !this.injuredCounted) { this.injuredCounted = true; ctx.stats.npcInjured++; }
     const severe = this.wounds.severity() > 0.85 || this.wounds.eye || this.wounds.jaw || this.hp < 25;
     if (severe && !this.severeCounted) { this.severeCounted = true; ctx.stats.npcSevere++; }
-    ctx.crowd.onNpcHit(this, d, amt);
-
+    const wasUp = this.standing;
     const knock = this.hp <= 0 || d.force > 5.5 || (d.zone === 'head' && amt > 18) || (d.type === 'lbd' && (d.zone === 'head' || d.zone === 'legL' || d.zone === 'legR') && chance(0.7))
       || (d.type === 'baton' && d.zone === 'head') || (this.wounds.limp > 0.8 && chance(0.5));
     if (this.hp <= 0) { this.unconscious = true; this.hp = 0; }
@@ -198,6 +197,7 @@ export class NPC {
     } else if (this.ragdoll) {
       this.ragdoll.impulse(d.zone === 'head' ? P.head : P.torso, _v.copy(d.dir).multiplyScalar(d.force * 0.6));
     }
+    ctx.crowd.onNpcHit(this, d, amt, wasUp && !this.standing);
   }
 
   knockDown(vel: THREE.Vector3, part: number = P.torso) {

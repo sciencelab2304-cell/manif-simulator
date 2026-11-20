@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { ctx, type Camp, type HitInfo } from '../core/context';
 import { NPC, STATES, type Role, type Weapon } from '../npc/npc';
 import type { Zone, DamageType } from '../damage/damage';
-import { Avatar } from './avatar';
+import { Avatar, dress } from './avatar';
+import type { LookSpec } from '../meta/shop';
 import { runAction } from './actions';
 import type { Msg } from './net';
 import type { ThrowKind } from '../weapons/projectiles';
@@ -154,7 +155,7 @@ export class Sync {
     for (const n of ctx.crowd.all) {
       if (n.state === 'gone') continue;
       ev.push(['npc', n.id, n.role, n.weapon, n.pos.x, n.pos.z]);
-      if (n.data.human) ev.push(['human', n.id, n.data.human.peer, n.data.human.name]);
+      if (n.data.human) ev.push(['human', n.id, n.data.human.peer, n.data.human.name, n.data.human.look]);
       if (n.isDown) ev.push(['lay', n.id, n.yaw]);
     }
     ev.push(['banners', ctx.crowd.banners.map((b) => [b.a.id, b.b.id])]);
@@ -283,8 +284,9 @@ export class Sync {
       }
       case 'human': {
         if (!n) return;
-        const [, peer, name] = a as [number, string, string];
-        n.data.human = { peer, name };
+        const [, peer, name, look] = a as [number, string, string, LookSpec | undefined];
+        n.data.human = { peer, name, look };
+        dress(n, look);
         if (peer === ctx.net.me) { n.hidden = true; n.collider.setEnabled(false); this.meId = n.id; }
         return;
       }

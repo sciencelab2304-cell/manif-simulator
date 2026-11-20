@@ -97,24 +97,24 @@ export class Crowd {
     for (const [role, c] of counts) {
       for (let i = 0; i < c; i++) {
         const slotZ = role === 'casseur' ? rr(2, 10) : role === 'medic' ? rr(15, 45) : rr(0, 52);
-        const slotX = rr(-6.5, 6.5) * (role === 'curious' ? 1.6 : 1);
-        const pos = new THREE.Vector3(clamp(slotX, -12.5, 12.5), 0, this.marchHeadZ + slotZ - 6);
+        const slotX = rr(-1, 1) * (L.ROAD_HALF - 1.5) * (role === 'curious' ? 1.6 : 1);
+        const pos = new THREE.Vector3(clamp(slotX, -L.SIDE, L.SIDE), 0, this.marchHeadZ + slotZ - 6);
         if (pos.z > L.AVE_START - 2) pos.z = L.AVE_START - 2 - rr(0, 5);
         const npc = this.add(new NPC(role, pos));
         npc.slot.x = slotX; npc.slot.z = slotZ;
         npc.yaw = Math.PI;
       }
     }
-    // police line
-    const front = 22;
+    // police line, from facade to facade, on the slots (±0.6, ±1.8…) that police players may take
+    const front = 2 * Math.floor((L.FACADE_X - 0.8) / 1.2), k = L.FACADE_X / 14;
     for (let i = 0; i < front; i++) {
-      const x = -12.6 + i * 1.2;
+      const x = (i - (front - 1) / 2) * 1.2;
       if (humanSlots.some((h) => Math.abs(x - h) < 0.01)) continue;
       this.spawnCrs(x, 0, 'shield');
     }
-    for (const x of [-8, -1, 6]) this.spawnCrs(x, 1, 'lbd');
-    for (const x of [-4.5, 2.5, 9.5]) this.spawnCrs(x, 1, 'grenade');
-    for (const x of [-11, 11]) this.spawnCrs(x, 1, 'shield');
+    for (const x of [-8, -1, 6]) this.spawnCrs(x * k, 1, 'lbd');
+    for (const x of [-4.5, 2.5, 9.5]) this.spawnCrs(x * k, 1, 'grenade');
+    for (const x of [-11, 11]) this.spawnCrs(x * k, 1, 'shield');
     // reserve guarding the place, for the protesters who slip past the line
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2, n = this.spawnCrs(Math.cos(a) * 12, 0, 'shield');
@@ -212,10 +212,10 @@ export class Crowd {
     }
   }
 
-  onNpcHit(n: NPC, d: DamageInfo, amt: number) {
+  onNpcHit(n: NPC, d: DamageInfo, amt: number, down: boolean) {
     if (n.role === 'crs' && d.fromCamp === 'protest') ctx.tension.add(0.6, 'CRS touché');
     if (n.camp === 'protest' && d.fromCamp === 'police') { ctx.tension.add(0.5, 'manifestant blessé'); this.panic(n.pos, 6, 0.6); }
-    if (amt > 0) d.by?.hitLanded({ id: n.id, role: n.role, camp: n.camp, zone: d.zone, eye: n.wounds.eye, jaw: n.wounds.jaw, type: d.type });
+    if (amt > 0) d.by?.hitLanded({ id: n.id, role: n.role, camp: n.camp, zone: d.zone, eye: n.wounds.eye, jaw: n.wounds.jaw, type: d.type, down });
   }
   onBlocked(n: NPC, d: DamageInfo) {
     ctx.tension.add(0.25, 'bouclier');
@@ -455,7 +455,7 @@ export class Crowd {
     if (ph === 2 && n.state !== 'leave' && chance(0.0008) && !n.data.banner) { n.setState('leave'); return; }
     if (n.role === 'curious') {
       n.setState('film');
-      if (!n.data.spot || chance(0.05)) n.data.spot = new THREE.Vector3(pick([-1, 1]) * rr(9, 12.5), 0, this.police.lineZ + rr(16, 32));
+      if (!n.data.spot || chance(0.05)) n.data.spot = new THREE.Vector3(pick([-1, 1]) * rr(L.ROAD_HALF + 1, L.SIDE), 0, this.police.lineZ + rr(16, 32));
       n.target.copy(n.data.spot); n.speed = 1.3;
       n.faceYaw = Math.atan2(0 - n.pos.x, this.police.lineZ - n.pos.z);
       return;
@@ -645,7 +645,7 @@ export class Crowd {
     if (!n.data.spot || chance(0.04)) {
       const side = pick([-1, 1]);
       const lineZ = this.police.lineZ;
-      n.data.spot = new THREE.Vector3(side * rr(8.5, 12.5), 0, ctx.tension.phase === 2 ? lineZ + rr(8, 20) : lineZ + rr(5, 14));
+      n.data.spot = new THREE.Vector3(side * rr(L.ROAD_HALF + 0.5, L.SIDE), 0, ctx.tension.phase === 2 ? lineZ + rr(8, 20) : lineZ + rr(5, 14));
     }
     n.target.copy(n.data.spot); n.speed = 2;
     // film the action (between the line and the crowd)

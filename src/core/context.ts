@@ -25,7 +25,7 @@ import type { NPC } from '../npc/npc';
 export type Camp = 'protest' | 'police';
 
 /** What the attacker learns when one of his hits lands. */
-export interface HitInfo { id: number; role: string; camp: Camp | 'neutral'; zone: Zone; eye: boolean; jaw: boolean; type: string; blocked?: boolean }
+export interface HitInfo { id: number; role: string; camp: Camp | 'neutral'; zone: Zone; eye: boolean; jaw: boolean; type: string; blocked?: boolean; down?: boolean }
 
 /**
  * A human player as the world sees it: the local Player, or the Avatar standing in for a remote one on the host.
@@ -55,7 +55,8 @@ export const asHuman = (o: unknown): Human | null => (o && (o as Human).isHuman 
 /** Match counters: world ones (from the host) and personal ones (`my…`, hits, thrown…). */
 export function newStats() {
   return { thrown: 0, lbdShots: 0, lbdHits: 0, gasGrenades: 0, stingGrenades: 0, batonHits: 0, npcInjured: 0, npcSevere: 0,
-    arrests: 0, myArrests: 0, hits: 0, headHits: 0, peopleHit: 0, windows: 0, vehiclesBurnt: 0, fires: 0, barricades: 0, damageEuros: 0, evacuated: 0, playerWounds: 0, waterSeconds: 0 };
+    arrests: 0, myArrests: 0, hits: 0, headHits: 0, peopleHit: 0, windows: 0, vehiclesBurnt: 0, fires: 0, barricades: 0, damageEuros: 0, evacuated: 0, playerWounds: 0, waterSeconds: 0,
+    takedowns: 0, downs: 0, firstDown: 0 }; // takedowns: people I knocked down; firstDown: match time of my first fall
 }
 export type Stats = ReturnType<typeof newStats>;
 

@@ -1,7 +1,7 @@
-# PAVÉS — Valbrune
+# Manif Simulator — Valbrune
 
 Jeu de manifestation en vue à la première personne (PEGI 18), jouable dans le navigateur.
-Ville, lieux et personnages **fictifs** : le boulevard des Tanneurs et la place de la Concorde-Neuve, à Valbrune.
+Ville, lieux et personnages **fictifs**, à Valbrune : trois cartes (boulevard des Tanneurs, quartier des Remparts, parvis de la gare).
 
 On choisit son camp au début : **manifestant** ou **CRS**. La partie commence dans le calme,
 une jauge de tension monte avec le temps et les actions de chacun, puis ça part en cacahuète.
@@ -103,7 +103,8 @@ src/
   net/                    multijoueur : liaison PeerJS et salon, actions des joueurs, synchronisation hôte → clients, avatars des joueurs
   game.ts                 boucle de jeu, objectifs, écran de fin, hélicoptère
   core/                   contexte partagé, physique (rapier), entrées clavier/souris/tactile, détection mobile, réglages, textures, utilitaires
-  world/                  plan de la ville, ciel jour/nuit, construction de l'avenue et de la place
+  world/                  cartes, plan de la ville, ciel jour/nuit, construction de la rue et de la place
+  meta/                   progression hors partie : sauvegarde, niveaux et gains, boutique et améliorations, défis, pubs récompensées
   destruction/            vitrines, abribus, voitures et poubelles qui brûlent, barricades, objets dynamiques
   npc/                    corps et animations (instancing), ragdolls, PNJ, IA de la foule et des CRS
   damage/                 blessures localisées (tête, torse, bras, jambes), saignement, œil, mâchoire, boiterie
@@ -112,7 +113,7 @@ src/
   vehicles/               canon à eau (conduite + tourelle)
   tension/                jauge de tension, 3 phases, sommations
   audio/                  moteur audio synthétisé
-  ui/                     HUD, jauges de vie, mini-carte, contrôles tactiles, salon multijoueur, styles
+  ui/                     écrans de progression (barre du menu, boutique, défis, gains de fin de partie), HUD, jauges de vie, mini-carte, contrôles tactiles, salon multijoueur, styles
 ```
 
 ## Déroulement
@@ -142,6 +143,29 @@ ou tenir la place 10 minutes (si 12 manifestants l'envahissent, c'est perdu). Le
 - **Vue à la 3e personne** : touche P (bouton « Vue » sur mobile, ou case dans les réglages).
 
 Écran de fin avec les statistiques (blessés, interpellations, personnes touchées, tirs, vitrines, véhicules brûlés, dégâts estimés…).
+
+## Progression
+
+Tout est sauvegardé dans le navigateur (`localStorage`, clé `manif-progress-v1`) ; « Réinitialiser la progression » dans les Réglages remet tout à zéro.
+
+- **Pavés d'or** (la monnaie, affichée en haut du menu) : gagnés en fin de partie (participation, victoire, éliminations, coups au but, interpellations, survie), avec les défis, à chaque niveau et avec les pubs récompensées. Un emplacement « Acheter des Pavés d'or · bientôt » est prévu, sans paiement pour l'instant.
+- **Niveaux et XP** : barre dans le menu et en fin de partie. Chaque niveau rapporte des Pavés d'or ; certains débloquent des skins ou des cartes (Remparts au niveau 3, Gare au niveau 5).
+- **Boutique** : tenues, têtes, dos et skins d'armes séparés pour chaque camp (visibles par les autres joueurs en ligne), et 5 améliorations permanentes à 5 paliers, au prix croissant (munitions de départ, chargeurs, vie max, rechargement, résistance).
+- **En ligne** : les améliorations sont plafonnées au palier 2 ; l'hôte peut cocher « partie équilibrée » pour les couper, ainsi que les bonus de départ.
+- **Défis** : 3 quotidiens (renouvelés à minuit), 3 de la semaine (le lundi) et des succès permanents ; la récompense se récupère dans l'écran « Défis ».
+- **Pubs récompensées** (5 par jour) : +50 Pavés d'or, un bonus de départ pour la prochaine partie (munitions, vie, grenades) ou les gains de fin de partie doublés. Elles sont simulées (15 s, bouton « Fermer » à la fin seulement) ; `src/meta/ads.ts` explique comment brancher un vrai réseau (Google H5 Games Ads / AdSense for Games) avec `setAdProvider`, sans toucher au reste.
+
+## Cartes
+
+Même histoire sur chaque carte : le cortège descend une rue vers une place tenue par la police. Choix sous le titre du menu ; en ligne, c'est l'hôte qui choisit dans le salon.
+
+| Carte | Ambiance | Débloquée |
+|---|---|---|
+| Boulevard des Tanneurs | grand boulevard haussmannien, voitures garées, fin d'après-midi (16h30) | d'emblée |
+| Quartier des Remparts | rues étroites en briques et crépis, sans voitures ni arbres, à la tombée du jour (18h36) : corps à corps | niveau 3 |
+| Parvis de la gare | large avenue, de nuit (21h), devant la gare, son horloge et sa grande verrière | niveau 5 |
+
+Les largeurs de rue, hauteurs d'immeubles, couleurs et heure de départ viennent de `src/world/maps.ts` ; `layout.ts` (`setMap`) et `city.ts` placent tout en fonction de ces largeurs.
 
 ## Commandes
 

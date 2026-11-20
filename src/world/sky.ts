@@ -62,9 +62,9 @@ export class Sky {
     scene.add(this.stars);
   }
 
-  /** progress: 0 (start of match, ~16h30) -> 1 (end of match, night) */
-  update(progress: number, focus: THREE.Vector3) {
-    this.elevation = lerp(13, -11, clamp(progress, 0, 1));
+  /** hour: in-game time; the sun sets around 18h45 and it is full night from 20h */
+  update(hour: number, focus: THREE.Vector3) {
+    this.elevation = lerp(13, -11, clamp((hour - 16.5) / 3.5, 0, 1));
     const azimuth = 238; // sun in the south-west
     const phi = THREE.MathUtils.degToRad(90 - this.elevation);
     const theta = THREE.MathUtils.degToRad(azimuth);

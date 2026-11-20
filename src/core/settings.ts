@@ -13,7 +13,8 @@ export interface Settings {
 }
 
 // phones keep their own settings so a shared browser profile never starts a phone in 'high'
-const KEY = isTouch ? 'paves-settings-touch-v1' : 'paves-settings-v1';
+const KEY = isTouch ? 'manif-settings-touch-v1' : 'manif-settings-v1';
+const OLD_KEY = isTouch ? 'paves-settings-touch-v1' : 'paves-settings-v1'; // before the game was renamed
 
 export function defaultSettings(): Settings {
   return isTouch
@@ -24,7 +25,7 @@ export function defaultSettings(): Settings {
 export function loadSettings(): Settings {
   const s = defaultSettings();
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
     if (raw) Object.assign(s, JSON.parse(raw));
   } catch { /* storage unavailable */ }
   return s;

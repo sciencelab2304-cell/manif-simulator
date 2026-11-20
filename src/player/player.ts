@@ -9,6 +9,7 @@ import type { BlastOpts } from '../weapons/projectiles';
 import { groundY } from '../world/city';
 import { ProtestKit } from '../weapons/protestKit';
 import { PoliceKit } from '../weapons/policeKit';
+import { loadout, gearOf, lookSpec, type Loadout } from '../meta/shop';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _eye = new THREE.Vector3();
 const SHOULDER = new THREE.Vector3(0.45, 0.35, 2.8); // third-person camera, in view space
@@ -57,9 +58,13 @@ export class Player {
   private camEuler = new THREE.Euler(0, 0, 0, 'YXZ');
   lastMouse = new THREE.Vector2();
 
+  /** purchased upgrades and the start bonus of this match (meta/shop) */
+  perks: Loadout;
+
   constructor(spawn: THREE.Vector3) {
     const police = ctx.camp === 'police';
-    this.maxHp = this.hp = 120;
+    this.perks = loadout();
+    this.maxHp = this.hp = Math.round(120 * this.perks.hp);
     if (police) { this.armor = { head: 0.55, torso: 0.4, armL: 0.25, armR: 0.25, legL: 0.2, legR: 0.2 }; this.hasGasMask = true; }
     this.pos.copy(spawn).setY(spawn.y + HALF_H + RADIUS + 0.05);
     const w = ctx.physics.world;
@@ -72,7 +77,7 @@ export class Player {
     this.kcc.setMaxSlopeClimbAngle((50 * Math.PI) / 180);
     this.kcc.setApplyImpulsesToDynamicBodies(true);
     this.kcc.setCharacterMass(police ? 110 : 75);
-    this.vm = new ViewModel(ctx.camera, police);
+    this.vm = new ViewModel(ctx.camera, police, gearOf(ctx.camp), lookSpec(ctx.camp).top);
     this.kit = police ? new PoliceKit(this) : new ProtestKit(this);
     this.yaw = police ? Math.PI : 0;
   }
@@ -95,8 +100,9 @@ export class Player {
       if (this.kit instanceof ProtestKit) this.kit.panneauHp -= d.amount;
       return;
     }
-    // the deeper a protester is behind the police line, the harder the police hit him
-    if (ctx.camp === 'protest') d = { ...d, amount: d.amount * (1 + 1.5 * ctx.crowd.depth(this.feet.z)) };
+    // the deeper a protester is behind the police line, the harder the police hit him; upgrades soften every hit
+    const k = this.perks.damage * (ctx.camp === 'protest' ? 1 + 1.5 * ctx.crowd.depth(this.feet.z) : 1);
+    if (k !== 1) d = { ...d, amount: d.amount * k };
     const amt = this.wounds.apply(d, this.armor);
     this.kit.onDamaged(d);
     this.hp -= amt;
@@ -198,6 +204,7 @@ export class Player {
     if (h.type !== 'blast') ctx.hud.hitMarker(h.zone === 'head');
     const own = h.camp === ctx.camp || h.role === 'journalist' || h.role === 'medic';
     if (own) this.friendlyFire++;
+    else if (h.down) s.takedowns++;
     if (ctx.camp === 'protest' && h.role === 'crs') this.aggro += 1.5;
     if (own || h.zone === 'head') {
       const who = h.role === 'crs' ? 'CRS' : h.role === 'journalist' ? 'journaliste' : h.role === 'medic' ? 'street medic' : h.role === 'firefighter' ? 'pompier' : 'manifestant';
@@ -217,6 +224,7 @@ export class Player {
     if (!this.alive) return;
     this.alive = false;
     this.hp = 0;
+    this.fell();
     ctx.hud.feed('Vous êtes à terre…', '#ff4040');
     ctx.audio.tinnitus(4);
     ctx.game.humanDown(false);
@@ -226,9 +234,12 @@ export class Player {
     if (!this.alive) return;
     this.alive = false;
     this.arrested = true;
+    this.fell();
     ctx.hud.feed('Interpellé ! Plaqué au sol et menotté.', '#ff4040');
     ctx.game.humanDown(true);
   }
+
+  private fell() { const s = ctx.stats; s.downs++; s.firstDown ||= ctx.time; }
 
   /** Multiplayer: back in the game after being evacuated or released. */
   respawn(at: THREE.Vector3) {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { defs, type ThrowKind } from '../weapons/projectiles';
+import type { Gear } from '../meta/shop';
 
 /** First-person hands and held objects, attached to the camera. */
 export class ViewModel {
@@ -20,10 +21,11 @@ export class ViewModel {
   aim = 0;
   current = '';
 
-  constructor(camera: THREE.Camera, police: boolean) {
+  /** gear: skins bought in the shop (weapon metal, gloves, lighter); sleeve: colour of the outfit */
+  constructor(camera: THREE.Camera, police: boolean, private gear: Gear = {}, sleeveColor?: number) {
     camera.add(this.root);
-    const skin = new THREE.MeshStandardMaterial({ color: police ? 0x1a1d22 : 0xd9a98a, roughness: police ? 0.8 : 0.6 });
-    const sleeve = new THREE.MeshStandardMaterial({ color: police ? 0x1a2333 : 0x3a3f4a, roughness: 0.9 });
+    const skin = new THREE.MeshStandardMaterial({ color: gear.hand ?? (police ? 0x1a1d22 : 0xd9a98a), roughness: police ? 0.8 : 0.6 });
+    const sleeve = new THREE.MeshStandardMaterial({ color: sleeveColor ?? (police ? 0x1a2333 : 0x3a3f4a), roughness: 0.9 });
     const mk = () => {
       const g = new THREE.Group();
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.32, 4, 8), sleeve); arm.rotation.x = Math.PI / 2; arm.position.z = 0.2;
@@ -37,7 +39,7 @@ export class ViewModel {
     this.handL.position.set(-0.24, -0.25, -0.42);
 
     // police kit
-    const metal = new THREE.MeshStandardMaterial({ color: 0x2b2f2a, roughness: 0.45, metalness: 0.6 });
+    const metal = new THREE.MeshStandardMaterial({ color: gear.metal ?? 0x2b2f2a, roughness: 0.45, metalness: 0.6 });
     this.lbd = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.11, 0.55), metal); body.position.z = -0.2;
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.32, 12).rotateX(Math.PI / 2), metal); barrel.position.set(0, 0.03, -0.55);
@@ -68,7 +70,7 @@ export class ViewModel {
     this.item = null;
     if (kind === 'lbd') this.item = this.lbd;
     else if (kind === 'baton') this.item = this.baton;
-    else if (kind === 'briquet') this.item = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.02), new THREE.MeshStandardMaterial({ color: 0xd8342a, roughness: 0.4 }));
+    else if (kind === 'briquet') this.item = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.02), new THREE.MeshStandardMaterial({ color: this.gear.lighter ?? 0xd8342a, roughness: 0.4, metalness: this.gear.lighter ? 0.8 : 0 }));
     else if (kind && kind in defs()) {
       const d = defs()[kind as ThrowKind];
       this.item = new THREE.Mesh(d.geo, d.mat as THREE.Material);

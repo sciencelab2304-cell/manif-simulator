@@ -9,6 +9,8 @@ import { isTouch, enterFullscreen } from './core/device';
 import { TouchControls } from './ui/touch';
 import { showLobby } from './ui/lobby';
 import { Net } from './net/net';
+import { initMeta, selectedMap } from './ui/meta';
+import { lookSpec, rules } from './meta/shop';
 
 const $ = (id: string) => document.getElementById(id)!;
 const settings = loadSettings();
@@ -41,16 +43,19 @@ const modeButtons = ['m-solo', 'm-create', 'm-join'].map((id) => $(id) as HTMLBu
 const pseudo = $('pseudo') as HTMLInputElement, codeInput = $('m-code') as HTMLInputElement;
 let camp: Camp = 'protest';
 const pickCamp = (c: Camp) => { camp = c; campButtons.forEach((b) => b.classList.toggle('sel', b.dataset.camp === c)); };
-campButtons.forEach((b) => b.addEventListener('click', () => pickCamp(b.dataset.camp as Camp)));
-try { pseudo.value = localStorage.getItem('paves-name') ?? ''; } catch { /* ignore */ }
+const redrawMeta = initMeta(() => camp);
+campButtons.forEach((b) => b.addEventListener('click', () => { pickCamp(b.dataset.camp as Camp); redrawMeta(); }));
+try { pseudo.value = localStorage.getItem('manif-name') ?? localStorage.getItem('paves-name') ?? ''; } catch { /* ignore */ }
 codeInput.value = new URLSearchParams(location.search).get('code') ?? '';
-const name = () => { const n = pseudo.value.trim().slice(0, 16) || 'Anonyme'; try { localStorage.setItem('paves-name', n); } catch { /* ignore */ } return n; };
+const name = () => { const n = pseudo.value.trim().slice(0, 16) || 'Anonyme'; try { localStorage.setItem('manif-name', n); } catch { /* ignore */ } return n; };
 const busy = (b: boolean, msg = '') => { modeButtons.forEach((x) => (x.disabled = b)); $('loading').textContent = msg; };
 
 async function online(how: 'create' | 'join') {
   const code = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (how === 'join' && code.length < 5) { codeInput.focus(); $('loading').textContent = 'Saisissez le code de la partie.'; return; }
   busy(true, how === 'create' ? 'Création de la partie…' : 'Connexion à la partie…');
+  net.looks = { protest: lookSpec('protest'), police: lookSpec('police') };
+  net.options = { map: selectedMap(), balanced: false };
   try {
     if (how === 'create') await net.create(name(), camp); else await net.join(code, name(), camp, (msg) => busy(true, msg));
     busy(false);
@@ -77,6 +82,10 @@ net.onClosed = (why) => {
 function start(c: Camp) {
   if (game) return;
   sync();
+  // online, purchased bonuses are capped, or off in a balanced match; the host chose the map
+  rules.multi = net.multi;
+  rules.balanced = net.multi && net.options.balanced;
+  const map = net.multi ? net.options.map : selectedMap();
   audio = audio ?? new AudioEngine();
   audio.setVolume(settings.volume);
   audio.resume();
@@ -92,7 +101,7 @@ function start(c: Camp) {
   // let the browser paint the message before the heavy city generation
   setTimeout(() => {
     try {
-      game = new Game(c, settings, input, audio!, net);
+      game = new Game(c, settings, input, audio!, net, map);
       $('menu').classList.add('hidden');
       game.start();
       if (isTouch) new TouchControls(input, c, () => setPaused(true));
@@ -117,7 +126,7 @@ $('resume').addEventListener('click', () => { if (isTouch) { enterFullscreen(); 
 $('app').addEventListener('click', () => { if (game && !ctx.over && !isTouch && !input.locked) input.lock(); });
 const restart = (c: Camp | null) => {
   net.leave();
-  try { if (c && !net.multi) sessionStorage.setItem('paves-autostart', c); else sessionStorage.removeItem('paves-autostart'); } catch { /* ignore */ }
+  try { if (c && !net.multi) sessionStorage.setItem('manif-autostart', c); else sessionStorage.removeItem('manif-autostart'); } catch { /* ignore */ }
   location.reload();
 };
 $('restart').addEventListener('click', () => restart(camp));
@@ -131,8 +140,8 @@ window.addEventListener('pagehide', () => net.leave());
 initRapier().then(() => {
   busy(false, 'Choisissez votre camp, puis jouez seul ou à plusieurs.');
   let auto: string | null = null;
-  try { auto = sessionStorage.getItem('paves-autostart'); sessionStorage.removeItem('paves-autostart'); } catch { /* ignore */ }
+  try { auto = sessionStorage.getItem('manif-autostart'); sessionStorage.removeItem('manif-autostart'); } catch { /* ignore */ }
   if (auto === 'protest' || auto === 'police') pickCamp(auto);
 }).catch((e) => { $('loading').textContent = 'Erreur de chargement : ' + e; });
 
-(window as any).__paves = ctx;
+(window as any).__manif = ctx;
