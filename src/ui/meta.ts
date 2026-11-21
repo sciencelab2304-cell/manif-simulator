@@ -37,6 +37,11 @@ export function mapCards(selected: string, interactive: boolean) {
       <b>${m.name}</b><span>${open ? m.desc : t`Débloquée au niveau ${m.level}`}</span></button>`;
   }).join('');
 }
+/** innerHTML with inline styles given as `data-css`: CrazyGames' content security policy blocks `style` attributes, not the CSSOM. */
+function fill(el: Element, html: string) {
+  el.innerHTML = html;
+  el.querySelectorAll<HTMLElement>('[data-css]').forEach((e) => (e.style.cssText = e.dataset.css!));
+}
 function renderMaps() { $('maps').innerHTML = mapCards(selectedMap(), true); }
 
 // ------------------------------------------------------------------ menu bar
@@ -71,7 +76,7 @@ export function initMeta(getCamp: () => Camp) {
 /** A full-screen panel with a back button; `onClick` gets the clicked [data-act] element. */
 function panel(id: string, html: () => string, onClick: (el: HTMLElement) => void) {
   const screen = $(id), inner = screen.querySelector('.menu-inner')!;
-  const draw = () => { inner.innerHTML = html() + '<button class="ghost back" data-act="close">' + t('Retour') + '</button>'; };
+  const draw = () => fill(inner, html() + '<button class="ghost back" data-act="close">' + t('Retour') + '</button>');
   (inner as HTMLElement).onclick = (e) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
     if (!el || (el as HTMLButtonElement).disabled) return;
@@ -96,7 +101,7 @@ function openShop(start: Camp) {
       : own ? `<button data-act="equip" data-id="${i.id}">${t('Équiper')}</button>`
       : i.level !== undefined ? `<button disabled>${t`Niveau ${i.level}`}</button>`
       : `<button data-act="buy" data-id="${i.id}" ${save.coins < i.price! ? 'disabled' : ''}>${coin(i.price!)}</button>`;
-    return `<div class="card${on ? ' on' : ''}${trying ? ' try' : ''}" data-act="try" data-id="${i.id}"><i class="sw" style="background:${hex(i.swatch)}"></i><b>${i.name}</b>${btn}</div>`;
+    return `<div class="card${on ? ' on' : ''}${trying ? ' try' : ''}" data-act="try" data-id="${i.id}"><i class="sw" data-css="background:${hex(i.swatch)}"></i><b>${i.name}</b>${btn}</div>`;
   };
   panel('shop', () => `<h2>${t('Boutique')}</h2>${wallet()}
     <p class="note">${t('Touchez un objet pour l\'essayer sur le personnage, faites glisser le personnage pour le tourner.')}</p>
@@ -123,7 +128,7 @@ function openShop(start: Camp) {
 // ------------------------------------------------------------------ challenges
 function openChallenges() {
   const row = (r: Row, k: number) => `<div class="ch${r.claimed ? ' claimed' : ''}"><div><b>${r.c.text}</b>
-    <div class="bar"><div style="width:${(r.progress / r.c.goal) * 100}%"></div></div><span>${r.c.metric === 'survive' ? `${Math.floor(r.progress / 60)} / ${r.c.goal / 60} min` : `${r.progress} / ${r.c.goal}`}</span></div>
+    <div class="bar"><div data-css="width:${(r.progress / r.c.goal) * 100}%"></div></div><span>${r.c.metric === 'survive' ? `${Math.floor(r.progress / 60)} / ${r.c.goal / 60} min` : `${r.progress} / ${r.c.goal}`}</span></div>
     ${r.claimed ? `<button disabled>${t('Récupéré')}</button>` : `<button data-act="claim" data-k="${k}" ${r.done ? '' : 'disabled'}>${coin(r.c.reward)}</button>`}</div>`;
   let rows: Row[] = [];
   panel('challenges', () => {
@@ -164,11 +169,11 @@ export function showEndRewards(r: MatchResult) {
   const news = grant(coins, xp);
   const box = $('end-rewards');
   const draw = (doubled: boolean) => {
-    box.innerHTML = `<div class="gain">+${coins * (doubled ? 2 : 1)} <i class="coin"></i> ${CURRENCY} · +${xp * (doubled ? 2 : 1)} XP</div>
+    fill(box, `<div class="gain">+${coins * (doubled ? 2 : 1)} <i class="coin"></i> ${CURRENCY} · +${xp * (doubled ? 2 : 1)} XP</div>
       <ul>${lines.map(([k, v]) => `<li><span>${k}</span><b>+${v}</b></li>`).join('')}${doubled ? `<li><span>${t('Pub : gains doublés')}</span><b>×2</b></li>` : ''}</ul>
-      <div class="lvl">${t`Niveau ${save.level}`}<div class="xpbar"><div style="width:${(save.xp / xpNeeded(save.level)) * 100}%"></div></div>${save.xp} / ${xpNeeded(save.level)} XP</div>
+      <div class="lvl">${t`Niveau ${save.level}`}<div class="xpbar"><div data-css="width:${(save.xp / xpNeeded(save.level)) * 100}%"></div></div>${save.xp} / ${xpNeeded(save.level)} XP</div>
       ${[...news, ...done.map((d) => t`Défi réussi : ${d} (récompense dans « Défis »)`)].map((n) => `<p class="news">${n}</p>`).join('')}
-      ${doubled ? '' : `<button id="end-double" class="ghost" ${adsLeft() ? '' : 'disabled'}>${t('Doubler les gains (pub)')}</button>`}`;
+      ${doubled ? '' : `<button id="end-double" class="ghost" ${adsLeft() ? '' : 'disabled'}>${t('Doubler les gains (pub)')}</button>`}`);
     const dbl = document.getElementById('end-double');
     if (dbl) dbl.onclick = () => showRewardedAd(() => { news.push(...grant(coins, xp)); draw(true); });
   };
