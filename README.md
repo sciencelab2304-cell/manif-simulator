@@ -161,6 +161,8 @@ Tout est sauvegardé dans le navigateur (`localStorage`, clé `manif-progress-v1
 
 Sur un domaine crazygames (ou avec `?useLocalSdk=true` pour le mode test), `src/core/platform.ts` charge leur SDK v3 : bandeaux de pub sur les côtés du menu (écrans larges seulement, jamais en partie), pub entre deux parties, pubs récompensées, sauvegarde cloud, langue du compte, son coupé par le site, liens d'invitation, événements de jeu (chargement, partie en cours, victoire). Le sang est désactivé par défaut là-bas (PEGI 12). Ailleurs, tout retombe sur le navigateur.
 
+À envoyer sur CrazyGames : le build multi-fichiers (`npm run build`, puis zipper le contenu de `dist/` : `index.html` à la racine et le dossier `assets/`). Leur politique de sécurité bloque le code et les styles écrits dans la page, donc le fichier unique `dist-single/` n'y démarre pas ; pour la même raison, les styles calculés passent par `data-css` (voir `fill()` dans `src/ui/meta.ts`).
+
 Multijoueur sur CrazyGames : la partie est déclarée comme « room » (`room()` : boutons Rejoindre / Inviter de leurs amis tant qu'elle est ouverte), un lancement depuis leur page Multijoueur crée directement une partie, un lien d'invitation la rejoint directement, le pseudo est celui du compte CrazyGames, et « Rejouer avec le groupe » relance l'hôte sur le même code puis ramène les autres dans le même salon. Taille du salon à déclarer : 8.
 
 Langue : choisie avec les boutons en haut du menu (rechargement de la page), sinon celle du joueur, anglais par défaut. Le texte français sert de clé ; `src/core/en.ts` donne l'anglais.
